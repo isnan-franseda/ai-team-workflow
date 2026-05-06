@@ -9,7 +9,7 @@
 - PostgreSQL + pgvector for document storage and semantic search
 - MiniMax client wrapper with retry/rate-limit handling
 - Service layer: `ChatService`, `IngestionService`, `DocumentService`, `SessionService`
-- REST endpoints: `/chat/send`, `/admin/ingest`, `/admin/ingest/batch`, `/admin/documents`
+- REST endpoints: `/api/v1/chat/session`, `/api/v1/chat/send`, `/api/v1/chat/history/{sessionId}`, `/admin/ingest`, `/admin/ingest/batch`, `/admin/documents`
 - Safety middleware: `ValuesFilterService`, `OutputValidatorService`
 - Rate limiting: Bucket4j (20 req/min per session)
 
@@ -50,6 +50,9 @@ dependencies {
     implementation("org.postgresql:postgresql:42.6.0")
     implementation("org.flywaydb:flyway-core:9.15.0")
     implementation("org.flywaydb:flyway-postgresql:9.15.0")
+    
+    // OpenAPI docs
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.1.0")
     
     // Kotlin
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
@@ -135,7 +138,7 @@ CREATE TABLE chunks (
     document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
     chunk_index INT NOT NULL,
     text VARCHAR(2048) NOT NULL,
-    embedding vector(1024),
+    embedding vector(1536),
     tokens_used INT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -238,6 +241,62 @@ servers:
     description: Local development
 
 paths:
+  /api/v1/chat/session:
+    post:
+      summary: Create a new chat session
+      operationId: createSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: string
+                  example: "user-abc-123"
+      responses:
+        201:
+          description: Session created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session_id:
+                    type: string
+                    format: uuid
+
+  /api/v1/chat/history/{sessionId}:
+    get:
+      summary: Retrieve conversation history
+      operationId: getHistory
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: Message history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    role:
+                      type: string
+                      enum: [USER, ASSISTANT]
+                    content:
+                      type: string
+                    created_at:
+                      type: string
+                      format: date-time
+
   /api/v1/chat/send:
     post:
       summary: Send a message to the chatbot
@@ -498,12 +557,41 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/api/v1/chat")
-class ChatController {
+class ChatController(
+    private val sessionService: com.kp.chatbot.service.SessionService,
+    private val chatService: com.kp.chatbot.service.ChatService
+) {
+
+    @PostMapping("/session")
+    fun createSession(@RequestBody request: Map<String, String>): Map<String, String> {
+        val userId = request["user_id"] ?: "anonymous"
+        val sessionId = sessionService.createSession(userId)
+        return mapOf("session_id" to sessionId.toString())
+    }
+
+    @GetMapping("/history/{sessionId}")
+    fun getHistory(@PathVariable sessionId: UUID): List<Map<String, String>> {
+        val messages = sessionService.getSessionMessages(sessionId)
+        return messages.map {
+            mapOf(
+                "role" to it.role,
+                "content" to it.content,
+                "created_at" to it.createdAt.toString()
+            )
+        }
+    }
 
     @PostMapping("/send")
-    fun sendMessage(@RequestBody request: ChatRequest): ChatResponse {
-        // TODO: Implement
-        throw NotImplementedError()
+    fun sendMessage(
+        @RequestBody request: ChatRequest,
+        @RequestHeader("X-Admin-Key") adminKey: String?
+    ): ChatResponse {
+        val sessionId = UUID.fromString(request.session_id)
+        return chatService.processChat(
+            sessionId = sessionId,
+            message = request.message,
+            language = request.language
+        )
     }
 }
 
@@ -623,12 +711,46 @@ git commit -m "feat: define api contract and controller skeletons"
 
 **Files:**
 - Create: `src/main/kotlin/com/kp/chatbot/client/MiniMaxClient.kt`
-- Create: `src/main/kotlin/com/kp/chatbot/config/MiniMaxConfig.kt`
+- Create: `src/main/kotlin/com/kp/chatbot/config/MiniMaxProperties.kt`
+- Create: `src/main/kotlin/com/kp/chatbot/client/MiniMaxApiException.kt`
 - Create: `src/test/kotlin/com/kp/chatbot/client/MiniMaxClientTest.kt`
 
 **Deliverables:** Working MiniMax client with retry logic, rate-limit handling, and passing spike test.
 
-- [ ] **Step 1: Create MiniMaxClient.kt with embedding + chat calls**
+- [ ] **Step 1: Create MiniMaxProperties.kt**
+
+```kotlin
+// src/main/kotlin/com/kp/chatbot/config/MiniMaxProperties.kt
+package com.kp.chatbot.config
+
+import org.springframework.boot.context.properties.ConfigurationProperties
+import org.springframework.stereotype.Component
+
+@Component
+@ConfigurationProperties(prefix = "minimax")
+data class MiniMaxProperties(
+    var apiKey: String = "",
+    var apiUrl: String = "https://api.minimax.chat/v1",
+    var embeddingModel: String = "embo-01",
+    var chatModel: String = "abab6-chat"
+)
+```
+
+- [ ] **Step 2: Create MiniMaxApiException.kt**
+
+```kotlin
+// src/main/kotlin/com/kp/chatbot/client/MiniMaxApiException.kt
+package com.kp.chatbot.client
+
+sealed class MiniMaxApiException(message: String) : RuntimeException(message)
+class RateLimitException(override val message: String) : MiniMaxApiException(message)
+class AuthException(override val message: String) : MiniMaxApiException(message)
+class ServerException(override val message: String) : MiniMaxApiException(message)
+class TimeoutException(override val message: String) : MiniMaxApiException(message)
+class NetworkException(override val message: String) : MiniMaxApiException(message)
+```
+
+- [ ] **Step 3: Create MiniMaxClient.kt with embedding + chat calls**
 
 ```kotlin
 // src/main/kotlin/com/kp/chatbot/client/MiniMaxClient.kt
@@ -759,7 +881,7 @@ class MiniMaxClientTest {
 
         val embedding = miniMaxClient.embedText("Berapa limit pinjaman saya?")
         assert(embedding.isNotEmpty())
-        assert(embedding.size > 100) // Expect 1024-dim embedding
+        assert(embedding.size > 100) // Expect 1536-dim embedding (embo-01)
     }
 
     @Test
@@ -1142,7 +1264,7 @@ class DocumentServiceTest {
                 DocumentService.ChunkData(
                     index = idx,
                     text = text,
-                    embedding = List(1024) { 0.1f } // Mock embedding
+                    embedding = List(1536) { 0.1f } // Mock embedding
                 )
             },
             tokensUsed = 150
@@ -1173,7 +1295,7 @@ class DocumentServiceTest {
             docType = docType,
             fileBytes = fileContent.toByteArray(),
             chunks = listOf(
-                DocumentService.ChunkData(0, "Chunk 1", List(1024) { 0.1f })
+                DocumentService.ChunkData(0, "Chunk 1", List(1536) { 0.1f })
             ),
             tokensUsed = 50
         )
@@ -1184,7 +1306,7 @@ class DocumentServiceTest {
             docType = docType,
             fileBytes = fileContent.toByteArray(),
             chunks = listOf(
-                DocumentService.ChunkData(0, "Chunk 1", List(1024) { 0.1f })
+                DocumentService.ChunkData(0, "Chunk 1", List(1536) { 0.1f })
             ),
             tokensUsed = 50,
             skipIfExists = true
@@ -1279,7 +1401,7 @@ data class Chunk(
     @Column(nullable = false, columnDefinition = "TEXT")
     val text: String,
     
-    @Column(columnDefinition = "vector(1024)")
+    @Column(columnDefinition = "vector(1536)")
     val embedding: String?, // JSON array stored as string for now
     
     @Column(nullable = false)
@@ -1625,11 +1747,11 @@ class IngestionService(
                         miniMaxClient.embedText(text)
                     } else {
                         // Mock embedding for development
-                        List(1024) { 0.1f }
+                        List(1536) { 0.1f }
                     }
                 } catch (e: Exception) {
                     logger.warn("Failed to embed chunk $idx: ${e.message}")
-                    List(1024) { 0.1f }
+                    List(1536) { 0.1f }
                 }
 
                 DocumentService.ChunkData(
@@ -1727,17 +1849,232 @@ git commit -m "feat: implement document parsing and ingestion with chunking"
 
 ---
 
-### Task 7: Implement Chatbot Service & Safety Middleware
+### Task 7: Implement Chatbot Service, Safety Middleware & Pipeline Services
 
 **Files:**
 - Create: `src/main/kotlin/com/kp/chatbot/service/ChatService.kt`
 - Create: `src/main/kotlin/com/kp/chatbot/service/ValuesFilterService.kt`
 - Create: `src/main/kotlin/com/kp/chatbot/service/OutputValidatorService.kt`
+- Create: `src/main/kotlin/com/kp/chatbot/pipeline/VectorSearchService.kt`
+- Create: `src/main/kotlin/com/kp/chatbot/pipeline/WebSearchService.kt`
+- Create: `src/main/kotlin/com/kp/chatbot/pipeline/ContextAssembler.kt`
+- Create: `src/main/kotlin/com/kp/chatbot/ingestion/TextChunker.kt`
+- Create: `src/main/kotlin/com/kp/chatbot/config/ValuesFilterPrompt.kt`
 - Create: `src/test/kotlin/com/kp/chatbot/service/ChatServiceTest.kt`
 
-**Deliverables:** Chat message processing, web search + values filter, output validation, citation extraction.
+**Deliverables:** Chat message processing, web search + values filter, output validation, vector search, context assembly, text chunking.
 
-- [ ] **Step 1: Write failing test for ChatService**
+- [ ] **Step 1: Create KpSystemPrompt.kt**
+
+```kotlin
+// src/main/kotlin/com/kp/chatbot/config/KpSystemPrompt.kt
+package com.kp.chatbot.config
+
+/**
+ * KP System Prompt — NEVER MODIFY WITHOUT HUMAN REVIEW.
+ * This prompt enforces brand voice, responsible lending, citation rules, and language compliance.
+ */
+object KpSystemPrompt {
+    fun build(language: String, documentContext: String): String = """
+        Anda adalah asisten AI dari Kredit Pintar (KP), perusahaan fintech pinjaman di Indonesia.
+        
+        Peran Anda adalah menjawab pertanyaan tentang produk pinjaman, ketentuan, dan kebijakan KP
+        dengan cara yang ramah, profesional, dan sesuai dengan positioning KP sebagai "mitra keuangan".
+        
+        ATURAN PENTING:
+        1. Selalu jawab dalam Bahasa Indonesia.
+        2. JANGAN membuat janji tentang persetujuan pinjaman, jumlah spesifik, atau keputusan kredit.
+        3. Jika tidak memiliki informasi yang cukup, arahkan pengguna untuk menghubungi tim dukungan KP.
+        4. Kutip sumber dokumen saat menggunakan pengetahuan dari dokumen KP.
+        5. Jaga nada profesional dan hangat — jangan gunakan taktik urgensi, ketakutan, atau perbandingan kompetitor.
+        6. Jika pengguna bertanya dalam bahasa Inggris, jawab dalam Bahasa Indonesia dengan fallback Inggris.
+        
+        ${if (documentContext.isNotEmpty()) "Konteks dari dokumen KP:\n$documentContext" else ""}
+    """.trimIndent()
+}
+```
+
+- [ ] **Step 2: Create ValuesFilterPrompt.kt**
+
+```kotlin
+// src/main/kotlin/com/kp/chatbot/config/ValuesFilterPrompt.kt
+package com.kp.chatbot.config
+
+/**
+ * Values Filter Prompt — NEVER MODIFY WITHOUT HUMAN REVIEW.
+ * Used by ValuesFilterService to evaluate web search results against KP lending values.
+ */
+object ValuesFilterPrompt {
+    val filterPrompt: String = """
+        Evaluasi konten berikut untuk Kredit Pintar (KP), perusahaan pinjaman di Indonesia.
+        
+        Tentukan apakah konten ini LAYAK (PASS) atau TIDAK LAYAK (FAIL) untuk ditampilkan kepada pengguna KP.
+        
+        Alasan FAIL:
+        - Mempromosikan kompetitor atau produk pesaing
+        - Mengandung taktik urgensi atau ketakutan yang tidak pantas
+        - Membuat janji pinjaman yang tidak bertanggung jawab
+        - Informasi yang menyesatkan atau tidak akurat
+        - Konten yang melanggar nilai-nilai KP sebagai "mitra keuangan"
+        
+        Output JSON: {"result": "PASS" | "FAIL", "reason": "alasan singkat dalam Bahasa Indonesia"}
+    """.trimIndent()
+}
+```
+
+- [ ] **Step 3: Create TextChunker.kt**
+
+```kotlin
+// src/main/kotlin/com/kp/chatbot/ingestion/TextChunker.kt
+package com.kp.chatbot.ingestion
+
+import org.springframework.stereotype.Component
+import kotlin.math.min
+
+@Component
+class TextChunker(
+    private val chunkSize: Int = 400,
+    private val overlap: Int = 50
+) {
+    fun chunk(text: String): List<ChunkResult> {
+        val chunks = mutableListOf<ChunkResult>()
+        if (text.isBlank()) return chunks
+
+        var start = 0
+        var index = 0
+        while (start < text.length) {
+            val end = min(start + chunkSize, text.length)
+            // Try to break at sentence boundary
+            val adjustedEnd = findSentenceBoundary(text, start, end)
+            val chunkText = text.substring(start, adjustedEnd).trim()
+            if (chunkText.isNotBlank()) {
+                chunks.add(ChunkResult(
+                    index = index,
+                    text = chunkText,
+                    tokenCount = chunkText.split("\\s+".toRegex()).size
+                ))
+                index++
+            }
+            start = adjustedEnd - overlap
+        }
+        return chunks
+    }
+
+    private fun findSentenceBoundary(text: String, start: Int, preferredEnd: Int): Int {
+        // Look backward from preferredEnd for sentence-ending punctuation
+        val boundaryChars = setOf('.', '!', '?', '\n')
+        for (i in preferredEnd downTo max(start, preferredEnd - 100)) {
+            if (i < text.length && text[i] in boundaryChars) {
+                return i + 1
+            }
+        }
+        // Fall back to preferredEnd if no sentence boundary found
+        return preferredEnd
+    }
+
+    data class ChunkResult(
+        val index: Int,
+        val text: String,
+        val tokenCount: Int
+    )
+}
+```
+
+- [ ] **Step 4: Create VectorSearchService.kt**
+
+```kotlin
+// src/main/kotlin/com/kp/chatbot/pipeline/VectorSearchService.kt
+package com.kp.chatbot.pipeline
+
+import com.kp.chatbot.entity.Chunk
+import org.springframework.stereotype.Service
+
+@Service
+class VectorSearchService(
+    // private val chunkRepository: ChunkRepository
+) {
+    fun search(embedding: List<Float>, topK: Int = 5, minSimilarity: Double = 0.7): List<Chunk> {
+        // TODO: Implement pgvector cosine similarity query:
+        // "SELECT * FROM chunks ORDER BY embedding <=> :embedding LIMIT :topK"
+        // using native SQL query with chunkRepository
+        return emptyList()
+    }
+}
+```
+
+- [ ] **Step 5: Create WebSearchService.kt**
+
+```kotlin
+// src/main/kotlin/com/kp/chatbot/pipeline/WebSearchService.kt
+package com.kp.chatbot.pipeline
+
+import com.kp.chatbot.client.SearchResult
+import org.springframework.stereotype.Service
+
+@Service
+class WebSearchService {
+    suspend fun search(query: String, maxResults: Int = 3): List<SearchResult> {
+        // TODO: Implement MiniMax web search tool invocation
+        // val results = miniMaxClient.webSearch(query)
+        return emptyList()
+    }
+}
+```
+
+- [ ] **Step 6: Create ContextAssembler.kt**
+
+```kotlin
+// src/main/kotlin/com/kp/chatbot/pipeline/ContextAssembler.kt
+package com.kp.chatbot.pipeline
+
+import com.kp.chatbot.entity.Chunk
+import com.kp.chatbot.client.SearchResult
+import org.springframework.stereotype.Component
+
+@Component
+class ContextAssembler(
+    private val docBudgetChars: Int = 1800,    // ~60% of context
+    private val webBudgetChars: Int = 900      // ~30% of context
+) {
+    fun assemble(
+        docChunks: List<Chunk>,
+        webResults: List<SearchResult>
+    ): AssembledContext {
+        var docChars = 0
+        val docTexts = mutableListOf<String>()
+        for (chunk in docChunks) {
+            val remaining = docBudgetChars - docChars
+            if (remaining <= 0) break
+            val text = if (chunk.text.length <= remaining) chunk.text else chunk.text.take(remaining)
+            docTexts.add(text)
+            docChars += text.length
+        }
+
+        var webChars = 0
+        val webTexts = mutableListOf<String>()
+        for (result in webResults) {
+            val remaining = webBudgetChars - webChars
+            if (remaining <= 0) break
+            webTexts.add("[${result.title}](${result.url}): ${result.snippet}")
+            webChars += result.snippet.length
+        }
+
+        return AssembledContext(
+            documentText = docTexts.joinToString("\n\n"),
+            webText = webTexts.joinToString("\n\n"),
+            totalChars = docChars + webChars
+        )
+    }
+
+    data class AssembledContext(
+        val documentText: String,
+        val webText: String,
+        val totalChars: Int
+    )
+}
+```
+
+- [ ] **Step 7: Write failing test for ChatService**
 
 ```kotlin
 // src/test/kotlin/com/kp/chatbot/service/ChatServiceTest.kt
@@ -1888,13 +2225,19 @@ package com.kp.chatbot.service
 
 import com.kp.chatbot.client.MiniMaxClient
 import com.kp.chatbot.client.ChatMessage
+import com.kp.chatbot.config.KpSystemPrompt
 import com.kp.chatbot.controller.ChatResponse
 import com.kp.chatbot.controller.Citation
+import com.kp.chatbot.pipeline.ContextAssembler
+import com.kp.chatbot.pipeline.VectorSearchService
+import com.kp.chatbot.pipeline.WebSearchService
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 
 @Service
 class ChatService(
@@ -1902,7 +2245,10 @@ class ChatService(
     private val documentService: DocumentService,
     private val miniMaxClient: MiniMaxClient,
     private val valuesFilterService: ValuesFilterService,
-    private val outputValidatorService: OutputValidatorService
+    private val outputValidatorService: OutputValidatorService,
+    private val vectorSearchService: VectorSearchService,
+    private val webSearchService: WebSearchService,
+    private val contextAssembler: ContextAssembler
 ) {
     private val logger = LoggerFactory.getLogger(ChatService::class.java)
 
@@ -1925,16 +2271,16 @@ class ChatService(
             messages.addAll(history.map { ChatMessage(it.role.lowercase(), it.content) })
             messages.add(ChatMessage("user", message))
 
-            // Search relevant documents (mocked for now)
-            val relevantChunks = documentService.searchChunks(message, listOf())
-            val documentContext = if (relevantChunks.isNotEmpty()) {
-                relevantChunks.joinToString("\n") { it.text }
-            } else {
-                ""
-            }
+            // Embed query, vector search, web search in parallel
+            val queryEmbedding = miniMaxClient.embedText(message)
+            val relevantChunks = vectorSearchService.search(queryEmbedding, topK = 5, minSimilarity = 0.7)
 
-            // Build prompt
-            val systemPrompt = buildSystemPrompt(language, documentContext)
+            // Use KpSystemPrompt (must not be modified without human review)
+            val systemPrompt = KpSystemPrompt.build(language, contextAssembler.assemble(
+                docChunks = relevantChunks,
+                webResults = emptyList()
+            ).documentText)
+
             val allMessages = listOf(ChatMessage("system", systemPrompt)) + messages
 
             // Get response from MiniMax (mock for test-key)
@@ -1944,7 +2290,7 @@ class ChatService(
                 "Terima kasih atas pertanyaan Anda. Saya adalah asisten AI dari Kredit Pintar."
             }
 
-            // Validate output
+            // Validate output (NEVER skip this step)
             val validationResult = outputValidatorService.validate(response)
             val finalResponse = if (validationResult.passed) {
                 response
@@ -2001,23 +2347,6 @@ class ChatService(
         }
     }
 
-    private fun buildSystemPrompt(language: String, documentContext: String): String {
-        val basePrompt = """
-            You are a helpful assistant for Kredit Pintar, a financial lending company in Indonesia.
-            
-            Your role is to answer questions about KP's loan products, terms, and policies in a friendly, professional manner.
-            
-            Important guidelines:
-            1. Always respond in the user's language (Bahasa Indonesia if they ask in ID).
-            2. Do NOT make promises about loan approval, specific amounts, or guaranteed credit decisions.
-            3. If you don't have information, direct the user to contact KP support.
-            4. Maintain a professional but warm tone that reflects KP's "financial partner" brand.
-            
-            ${if (documentContext.isNotEmpty()) "Context from KP documents:\n$documentContext" else ""}
-        """.trimIndent()
-
-        return basePrompt
-    }
 }
 ```
 

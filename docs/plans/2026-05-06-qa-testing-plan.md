@@ -144,7 +144,7 @@ git commit -m "docs: define test strategy and acceptance criteria mapping"
 - Configure JUnit 5
 
 **Files (Frontend):**
-- Configure Jest + React Testing Library
+- Configure Vitest
 - Set up Playwright config
 - Configure axe-core testing
 
@@ -198,7 +198,7 @@ abstract class BaseIntegrationTest {
 }
 ```
 
-- [ ] **Step 3: Run smoke test**
+- [ ] **Step 3: Run smoke test (backend)**
 
 ```bash
 cd backend
@@ -209,45 +209,35 @@ Expected: Test runs and passes.
 
 #### Frontend Setup
 
-- [ ] **Step 4: Configure Jest**
-
-```javascript
-// jest.config.js
-export default {
-  preset: 'ts-jest',
-  testEnvironment: 'jsdom',
-  setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
-  moduleNameMapper: {
-    '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
-  },
-};
-```
-
-- [ ] **Step 5: Create Jest setup file**
+- [ ] **Step 4: Configure Vitest (via vite.config.ts) and create setup file**
 
 ```typescript
 // src/setupTests.ts
 import '@testing-library/jest-dom';
+import { cleanup } from '@testing-library/react';
 
-// Mock environment variables
+afterEach(() => {
+  cleanup();
+});
+
 process.env.VITE_API_URL = 'http://localhost:8080';
 ```
 
-- [ ] **Step 6: Configure Playwright**
+- [ ] **Step 5: Configure Playwright**
 
-Already done in frontend plan; verify it exists.
+Already done in frontend plan (Task 8); verify it exists.
 
-- [ ] **Step 7: Verify axe-core setup**
+- [ ] **Step 6: Verify axe-core setup**
 
 ```bash
-npm install -D @axe-core/react
+npm install -D vitest-axe
 ```
 
-- [ ] **Step 8: Run smoke test (frontend)**
+- [ ] **Step 7: Run smoke test (frontend)**
 
 ```bash
 cd frontend
-npm test -- --testPathPattern="AdminKeyPrompt" --passWithNoTests
+npx vitest run --passWithNoTests
 ```
 
 Expected: Test runs or skips (no setup errors).
@@ -255,8 +245,8 @@ Expected: Test runs or skips (no setup errors).
 - [ ] **Step 9: Commit**
 
 ```bash
-git add build.gradle.kts jest.config.js src/setupTests.ts
-git commit -m "feat: configure test infrastructure (jest, testcontainers, playwright)"
+git add build.gradle.kts src/setupTests.ts vitest.config.ts
+git commit -m "feat: configure test infrastructure (vitest, testcontainers, playwright)"
 ```
 
 ---
@@ -647,11 +637,9 @@ npm install -D @axe-core/react @testing-library/react
 
 ```typescript
 // src/__tests__/accessibility.test.ts
-import { axe, toHaveNoViolations } from 'jest-axe';
+import { axe } from 'vitest-axe';
 import { render } from '@testing-library/react';
 import App from '../App';
-
-expect.extend(toHaveNoViolations);
 
 describe('Accessibility', () => {
   it('should have no axe violations in main app', async () => {

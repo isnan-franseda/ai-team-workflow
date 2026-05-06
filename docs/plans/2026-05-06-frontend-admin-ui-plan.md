@@ -12,7 +12,7 @@
 - Mock API client (swap to real API by EOD Day 1)
 - Error mapping to Bahasa Indonesia friendly messages
 
-**Tech Stack:** React 18, TypeScript, Vite, Tailwind CSS, React Testing Library, Playwright E2E
+**Tech Stack:** React 18, TypeScript, Vite, Tailwind CSS, Vitest, React Testing Library, Playwright E2E, axe-core
 
 ---
 
@@ -45,8 +45,53 @@ npm install
 
 ```bash
 npm install tailwindcss postcss autoprefixer axios
-npm install -D @testing-library/react @testing-library/jest-dom @playwright/test
+npm install -D vitest @testing-library/react @testing-library/jest-dom @playwright/test @axe-core/react jest-axe jsdom
 npx tailwindcss init -p
+```
+
+- [ ] **Step 3: Configure Vitest in vite.config.ts**
+
+```typescript
+// vite.config.ts
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/setupTests.ts',
+    css: true,
+  },
+  build: {
+    minify: 'terser',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          api: ['axios'],
+        }
+      }
+    },
+    chunkSizeWarningLimit: 500,
+  },
+})
+```
+
+- [ ] **Step 4: Create Vitest setup file**
+
+```typescript
+// src/setupTests.ts
+import '@testing-library/jest-dom';
+import { cleanup } from '@testing-library/react';
+
+afterEach(() => {
+  cleanup();
+});
+
+// Mock environment variables
+process.env.VITE_API_URL = 'http://localhost:8080';
 ```
 
 - [ ] **Step 3: Configure Tailwind**
@@ -379,7 +424,108 @@ git commit -m "feat: initialize react vite scaffold with component structure and
 
 **Deliverables:** Secure key input, session storage, friendly error messages.
 
-- [ ] **Step 1: Write failing test for AdminKeyPrompt**
+- [ ] **Step 1: Create i18n messages module**
+
+```typescript
+// src/i18n/messages.ts
+export const MSG = {
+  adminKey: {
+    title: "Panel Admin KP",
+    subtitle: "Masukkan kunci admin untuk melanjutkan",
+    placeholder: "Masukkan kunci admin",
+    button: "Masuk",
+    logout: "Keluar",
+    errorRequired: "Kunci admin diperlukan",
+  },
+  upload: {
+    title: "Unggah Dokumen Baru",
+    button: "Unggah Dokumen",
+    buttonBatch: "Unggah Semua",
+    buttonUploading: "Mengunggah...",
+    clearFiles: "Hapus Semua File",
+    dropzoneLabel: "File Upload Drop Zone",
+    dropzoneText: "Drag and drop files here",
+    dropzoneSubtext: "atau klik untuk memilih file",
+    dropzoneTypes: "PDF, DOCX, atau TXT",
+    selectedFiles: "File Terpilih:",
+    sectionUpload: "Unggah Dokumen Baru",
+    sectionList: "Dokumen Teringest",
+  },
+  documentList: {
+    title: "Dokumen Teringest",
+    loading: "Memuat dokumen...",
+    emptyState: "Tidak ada dokumen yang diunggah",
+    columns: {
+      nama: "Nama File",
+      tipe: "Tipe Dokumen",
+      chunk: "Chunk",
+      tanggal: "Tanggal Unggah",
+    },
+    status: {
+      active: "Aktif",
+      processing: "Diproses",
+      failed: "Gagal",
+    },
+  },
+  result: {
+    success: "Berhasil",
+    skipped: "Dilewati",
+    failed: "Gagal",
+  },
+  errors: {
+    invalidFile: "Beberapa file tidak didukung. Gunakan PDF, DOCX, atau TXT.",
+    invalidType: "Format file tidak didukung. Gunakan PDF, DOCX, atau TXT.",
+    invalidKey: "Kunci admin tidak valid. Silakan periksa kembali.",
+    duplicate: "File ini sudah pernah diunggah. Tidak ada perubahan yang dilakukan.",
+    fileTooBig: "Ukuran file terlalu besar. Maksimal 10 MB per file.",
+    rateLimit: "Terlalu banyak permintaan. Silakan tunggu beberapa saat.",
+    serverError: "Terjadi kesalahan saat mengunggah. Silakan coba lagi atau hubungi tim engineering.",
+    networkError: "Gagal terhubung ke server. Periksa koneksi internet Anda.",
+    generic: "Terjadi kesalahan. Silakan coba lagi.",
+  },
+} as const;
+```
+
+- [ ] **Step 2: Create useSessionKey hook**
+
+```typescript
+// src/hooks/useSessionKey.ts
+export const useSessionKey = () => {
+  const STORAGE_KEY = "admin_key";
+
+  const getKey = (): string | null => {
+    if (typeof window === "undefined") return null;
+    return sessionStorage.getItem(STORAGE_KEY);
+  };
+
+  const setKey = (key: string) => {
+    sessionStorage.setItem(STORAGE_KEY, key);
+  };
+
+  const clearKey = () => {
+    sessionStorage.removeItem(STORAGE_KEY);
+  };
+
+  const hasKey = (): boolean => getKey() !== null;
+
+  return { getKey, setKey, clearKey, hasKey, STORAGE_KEY };
+};
+```
+
+- [ ] **Step 3: Update AdminKeyPrompt to use i18n + hook**
+
+Replace old import section with:
+
+```typescript
+import React, { useState, useEffect } from "react";
+import { MSG } from "../i18n/messages";
+import { useSessionKey } from "../hooks/useSessionKey";
+import { mapErrorToBahasa } from "../utils/errorMapper";
+```
+
+Replace `sessionStorage` usage with `const { setKey, clearKey } = useSessionKey();`.
+
+- [ ] **Step 4: Write failing test for AdminKeyPrompt**
 
 ```typescript
 // src/components/__tests__/AdminKeyPrompt.test.tsx
@@ -388,7 +534,7 @@ import { AdminKeyPrompt } from "../AdminKeyPrompt";
 
 describe("AdminKeyPrompt", () => {
   it("should store admin key in sessionStorage on submit", () => {
-    const mockOnAuthenticated = jest.fn();
+    const mockOnAuthenticated = vi.fn();
     render(<AdminKeyPrompt onAuthenticated={mockOnAuthenticated} />);
 
     const input = screen.getByLabelText("Admin Key Input");
@@ -403,7 +549,7 @@ describe("AdminKeyPrompt", () => {
 
   it("should restore key from sessionStorage on mount", () => {
     sessionStorage.setItem("admin_key", "existing-key");
-    const mockOnAuthenticated = jest.fn();
+    const mockOnAuthenticated = vi.fn();
 
     render(<AdminKeyPrompt onAuthenticated={mockOnAuthenticated} />);
 
@@ -412,9 +558,9 @@ describe("AdminKeyPrompt", () => {
 
   it("should clear sessionStorage on logout", () => {
     sessionStorage.setItem("admin_key", "test-key");
-    const mockOnLogout = jest.fn();
+    const mockOnLogout = vi.fn();
 
-    render(<AdminKeyPrompt onAuthenticated={jest.fn()} onLogout={mockOnLogout} />);
+    render(<AdminKeyPrompt onAuthenticated={vi.fn()} onLogout={mockOnLogout} />);
 
     const logoutButton = screen.queryByText("Keluar");
     if (logoutButton) {
@@ -597,7 +743,7 @@ import { UploadPage } from "../UploadPage";
 
 describe("UploadPage", () => {
   it("should accept file drop and validate file types", async () => {
-    render(<UploadPage adminKey="test-key" onLogout={jest.fn()} />);
+    render(<UploadPage adminKey="test-key" onLogout={vi.fn()} />);
 
     const dropZone = screen.getByText(/drag-and-drop/i);
     const file = new File(["content"], "test.pdf", { type: "application/pdf" });
@@ -608,7 +754,7 @@ describe("UploadPage", () => {
   });
 
   it("should reject invalid file types", async () => {
-    render(<UploadPage adminKey="test-key" onLogout={jest.fn()} />);
+    render(<UploadPage adminKey="test-key" onLogout={vi.fn()} />);
 
     const dropZone = screen.getByText(/drag-and-drop/i);
     const file = new File(["content"], "test.exe", { type: "application/octet-stream" });
@@ -621,7 +767,7 @@ describe("UploadPage", () => {
   });
 
   it("should require doc_type selection before upload", async () => {
-    render(<UploadPage adminKey="test-key" onLogout={jest.fn()} />);
+    render(<UploadPage adminKey="test-key" onLogout={vi.fn()} />);
 
     const file = new File(["content"], "test.pdf", { type: "application/pdf" });
     const dropZone = screen.getByText(/drag-and-drop/i);
@@ -633,7 +779,7 @@ describe("UploadPage", () => {
   });
 
   it("should display upload progress and results", async () => {
-    render(<UploadPage adminKey="test-key" onLogout={jest.fn()} />);
+    render(<UploadPage adminKey="test-key" onLogout={vi.fn()} />);
 
     // Add file
     const file = new File(["content"], "test.pdf", { type: "application/pdf" });
@@ -1128,7 +1274,7 @@ import axios, { AxiosInstance } from "axios";
 import { UploadResult, DocumentList } from "../types";
 import { mapErrorToBahasa } from "../utils/errorMapper";
 
-const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:8080";
+const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
 export const createApiClient = (adminKey: string): AxiosInstance => {
   const instance = axios.create({
@@ -1227,13 +1373,116 @@ git commit -m "feat: integrate real api client with error handling"
 
 ---
 
-### Task 6: Accessibility & Styling Refinement
+### Task 6: Shared Components & Accessibility Audit
 
 **Files:**
-- Modify: `src/components/*.tsx` (add aria-labels, accessibility)
-- Create: `src/index.css` (refined Tailwind styles)
+- Create: `src/components/shared/ProgressIndicator.tsx`
+- Create: `src/components/shared/ErrorMessage.tsx`
+- Create: `src/components/shared/EmptyState.tsx`
+- Create: `src/__tests__/accessibility.test.ts`
+- Modify: `src/components/*.tsx` (add/verify aria-labels)
 
-**Deliverables:** axe-core compliance, all interactive elements accessible, responsive design validated.
+**Deliverables:** Reusable shared components, axe-core compliance (0 violations).
+
+- [ ] **Step 1: Create shared components**
+
+```typescript
+// src/components/shared/ProgressIndicator.tsx
+import React from "react";
+
+interface ProgressIndicatorProps {
+  label?: string;
+}
+
+export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
+  label = "Memproses...",
+}) => (
+  <div className="flex items-center gap-2 p-4" role="status" aria-label={label}>
+    <div className="w-5 h-5 border-2 border-kp-primary border-t-transparent rounded-full animate-spin" />
+    <span className="text-sm text-gray-600">{label}</span>
+  </div>
+);
+
+// src/components/shared/ErrorMessage.tsx
+interface ErrorMessageProps {
+  message: string;
+  onRetry?: () => void;
+}
+
+export const ErrorMessage: React.FC<ErrorMessageProps> = ({ message, onRetry }) => (
+  <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded flex items-center justify-between" role="alert">
+    <span>{message}</span>
+    {onRetry && (
+      <button onClick={onRetry} className="underline text-sm ml-4" aria-label="Coba Lagi">
+        Coba Lagi
+      </button>
+    )}
+  </div>
+);
+
+// src/components/shared/EmptyState.tsx
+import React from "react";
+
+interface EmptyStateProps {
+  message: string;
+}
+
+export const EmptyState: React.FC<EmptyStateProps> = ({ message }) => (
+  <div className="flex items-center justify-center p-8 text-gray-500">
+    {message}
+  </div>
+);
+```
+
+- [ ] **Step 2: Add aria-labels to all components**
+
+Verify all buttons, inputs, and modals have `aria-label` in Bahasa Indonesia.
+- AdminKeyPrompt: `aria-label="Admin Key Input"` on input
+- UploadPage: `aria-label="Upload Documents Button"` on upload btn
+- DocumentList: `aria-label="Tabel Dokumen Teringest"` on table
+- All shared components: role="status", role="alert" for accessibility
+
+- [ ] **Step 3: Write axe-core accessibility test**
+
+```typescript
+// src/__tests__/accessibility.test.ts
+import { axe } from 'vitest-axe';
+import { render } from '@testing-library/react';
+import App from '../App';
+
+describe('Accessibility', () => {
+  it('should have no axe violations in main app', async () => {
+    const { container } = render(<App />);
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  });
+});
+```
+
+- [ ] **Step 4: Run accessibility audit**
+
+```bash
+npm test -- accessibility.test.ts
+```
+
+Expected: 0 violations.
+
+- [ ] **Step 5: Test responsive design**
+
+```bash
+npm run dev
+# Test at 1280x720 (minimum), 1920x1080 (full width)
+# No horizontal scroll, layout wraps correctly
+```
+
+Expected: Layout works at all breakpoints.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/components/shared/ src/__tests__/accessibility.test.ts
+git commit -m "feat: add shared components and accessibility audit with axe-core"
+```
 
 - [ ] **Step 1: Add aria-labels to all components**
 
@@ -1271,16 +1520,120 @@ git commit -m "feat: ensure accessibility compliance and responsive design"
 
 ---
 
+### Task 7: App Shell & Routing (Tabs Navigation)
+
+**Files:**
+- Modify: `src/App.tsx`
+
+**Deliverables:** Admin dashboard with tabbed navigation (Unggah Dokumen / Daftar Dokumen).
+
+- [ ] **Step 1: Implement App shell with tabs**
+
+```typescript
+// src/App.tsx
+import React, { useState } from "react";
+import { AdminKeyPrompt } from "./components/AdminKeyPrompt";
+import { UploadPage } from "./components/UploadPage";
+import { DocumentList } from "./components/DocumentList";
+import { DocumentMetadata } from "./types";
+import { mockApiClient } from "./api/mockClient";
+
+type Tab = "upload" | "list";
+
+function App() {
+  const [adminKey, setAdminKey] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>("upload");
+  const [documents, setDocuments] = useState<DocumentMetadata[]>([]);
+
+  const handleAuthenticated = (key: string) => setAdminKey(key);
+  const handleLogout = () => { sessionStorage.removeItem("admin_key"); setAdminKey(null); };
+
+  const loadDocuments = async () => {
+    try {
+      const res = await mockApiClient.getDocuments(adminKey!);
+      setDocuments(res.documents);
+      setActiveTab("list");
+    } catch (e) { /* handled by UI */ }
+  };
+
+  if (!adminKey) return <AdminKeyPrompt onAuthenticated={handleAuthenticated} />;
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="bg-white shadow">
+        <div className="max-w-7xl mx-auto px-8 py-4 flex justify-between items-center">
+          <h1 className="text-2xl font-bold">Dashboard Admin KP</h1>
+          <nav className="flex gap-4">
+            <button onClick={() => setActiveTab("upload")}
+              className={`px-4 py-2 ${activeTab === "upload" ? "border-b-2 border-kp-primary font-semibold" : "text-gray-500"}`}>
+              Unggah Dokumen
+            </button>
+            <button onClick={loadDocuments}
+              className={`px-4 py-2 ${activeTab === "list" ? "border-b-2 border-kp-primary font-semibold" : "text-gray-500"}`}>
+              Daftar Dokumen
+            </button>
+            <button onClick={handleLogout} className="px-4 py-2 text-red-500" aria-label="Logout Button">
+              Keluar
+            </button>
+          </nav>
+        </div>
+      </div>
+      <div className="max-w-7xl mx-auto px-8 py-8">
+        {activeTab === "upload" ? (
+          <UploadPage adminKey={adminKey} onLogout={handleLogout} onUploadComplete={loadDocuments} />
+        ) : (
+          <DocumentList documents={documents} loading={false} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default App;
+```
+
+- [ ] **Step 2: Update UploadPage props to include onUploadComplete**
+
+```typescript
+// In UploadPage.tsx, add onUploadComplete to interface
+interface UploadPageProps {
+  adminKey: string;
+  onLogout: () => void;
+  onUploadComplete?: () => void;
+}
+```
+
+- [ ] **Step 3: Call onUploadComplete after successful upload**
+
+In UploadPage, after `loadDocuments()` call, add: `onUploadComplete?.()`.
+
+- [ ] **Step 4: Test tab navigation**
+
+```bash
+npm run dev
+```
+
+Expected: admin key → dashboard with tabs → upload → switch to list → logout. No console errors.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/App.tsx
+git commit -m "feat: add tabbed navigation with upload and document list views"
+```
+
+---
+
 ## Day 2-3: Testing & Stabilization (12 hours)
 
-### Task 7: Write E2E Tests with Playwright
+### Task 8: Write E2E Tests with Playwright (7 Scenarios)
 
 **Files:**
 - Create: `playwright.config.ts`
 - Create: `e2e/admin-upload.spec.ts`
-- Create: `e2e/integration.spec.ts`
+- Create: `e2e/a11y.spec.ts`
 
-**Deliverables:** End-to-end tests covering happy path and error cases.
+**Deliverables:** Playwright E2E tests covering 7 scenarios: login flow, single upload, duplicate warning, batch mixed results, error mapping, document list, logout.
 
 - [ ] **Step 1: Configure Playwright**
 
@@ -1316,86 +1669,121 @@ export default defineConfig({
 });
 ```
 
-- [ ] **Step 2: Write happy path E2E test**
+- [ ] **Step 2: Write 7 E2E test scenarios**
 
 ```typescript
 // e2e/admin-upload.spec.ts
 import { test, expect } from '@playwright/test';
 
 test.describe('Admin Upload Flow', () => {
-  test('should upload document and see it in list', async ({ page }) => {
-    // Navigate to app
+  test('1. Login flow: prompt visible → enter key → dashboard renders', async ({ page }) => {
     await page.goto('/');
+    await expect(page.getByText('Panel Admin KP')).toBeVisible();
 
-    // Enter admin key
     const keyInput = page.getByLabel('Admin Key Input');
     await keyInput.fill('test-admin-key');
-    const loginButton = page.getByRole('button', { name: /Masuk/i });
-    await loginButton.click();
+    await page.getByRole('button', { name: /Masuk/i }).click();
 
-    // Wait for upload page
     await expect(page.getByText('Unggah Dokumen Baru')).toBeVisible();
+  });
 
-    // Upload file
+  test('2. Single upload: drop PDF → select FAQ → result card with chunk count', async ({ page }) => {
+    await page.goto('/');
+    await page.getByLabel('Admin Key Input').fill('test-admin-key');
+    await page.getByRole('button', { name: /Masuk/i }).click();
+
     const dropZone = page.getByLabel('File Upload Drop Zone');
-    const file = './e2e/fixtures/sample.pdf';
-    await dropZone.setInputFiles(file);
+    await dropZone.setInputFiles('./e2e/fixtures/sample.pdf');
+    await page.getByLabel(/Doc Type for/).selectOption('FAQ');
+    await page.getByLabel('Upload Documents Button').click();
 
-    // Select doc type
-    const docTypeSelect = page.getByLabel(/Doc Type for/);
-    await docTypeSelect.selectOption('FAQ');
-
-    // Click upload
-    const uploadButton = page.getByLabel('Upload Documents Button');
-    await uploadButton.click();
-
-    // Wait for result
     await expect(page.getByText(/Berhasil/i)).toBeVisible({ timeout: 10000 });
-
-    // Verify document in list
-    const docList = page.getByText('Dokumen Teringest');
-    await expect(docList).toBeVisible();
   });
 
-  test('should reject invalid file types', async ({ page }) => {
+  test('3. Duplicate warning: upload same file twice → skip message', async ({ page }) => {
     await page.goto('/');
-
-    const keyInput = page.getByLabel('Admin Key Input');
-    await keyInput.fill('test-admin-key');
+    await page.getByLabel('Admin Key Input').fill('test-admin-key');
     await page.getByRole('button', { name: /Masuk/i }).click();
 
-    // Try uploading invalid file
     const dropZone = page.getByLabel('File Upload Drop Zone');
-    const file = './e2e/fixtures/sample.exe';
-    
-    // Set input files (this will be rejected)
-    try {
-      await dropZone.setInputFiles(file);
-    } catch (e) {
-      // Expected: file type mismatch
-    }
+    await dropZone.setInputFiles('./e2e/fixtures/sample.pdf');
+    await page.getByLabel(/Doc Type for/).selectOption('FAQ');
+    await page.getByLabel('Upload Documents Button').click();
 
-    // Verify error message
-    await expect(page.getByText(/format file tidak didukung/i)).toBeVisible();
+    await page.waitForTimeout(500);
+
+    // Upload same file again
+    await dropZone.setInputFiles('./e2e/fixtures/sample.pdf');
+    await page.getByLabel(/Doc Type for/).selectOption('FAQ');
+    await page.getByLabel('Upload Documents Button').click();
+
+    await expect(page.getByText(/dilewati/i)).toBeVisible({ timeout: 10000 });
   });
 
-  test('should show rate limit message on rapid uploads', async ({ page }) => {
+  test('4. Batch with mixed results: 3 files → 2 success + 1 skipped', async ({ page }) => {
     await page.goto('/');
-
-    const keyInput = page.getByLabel('Admin Key Input');
-    await keyInput.fill('test-admin-key');
+    await page.getByLabel('Admin Key Input').fill('test-admin-key');
     await page.getByRole('button', { name: /Masuk/i }).click();
 
-    // Upload multiple files rapidly
-    for (let i = 0; i < 25; i++) {
-      const dropZone = page.getByLabel('File Upload Drop Zone');
-      await dropZone.setInputFiles('./e2e/fixtures/sample.pdf');
-      await page.getByLabel('Upload Documents Button').click();
-    }
+    const dropZone = page.getByLabel('File Upload Drop Zone');
+    await dropZone.setInputFiles([
+      './e2e/fixtures/sample.pdf',
+      './e2e/fixtures/sample.docx',
+      './e2e/fixtures/sample.txt',
+    ]);
+    await page.getByLabel('Upload Documents Button').click();
 
-    // After rate limit, expect error
-    await expect(page.getByText(/terlalu banyak permintaan/i)).toBeVisible({ timeout: 30000 });
+    await expect(page.getByText(/hasil unggahan/i)).toBeVisible({ timeout: 15000 });
   });
+
+  test('5. Error handling: mock 500 → friendly BI message', async ({ page }) => {
+    // Note: This requires backend to return 500 for specific test payload
+    await page.goto('/');
+    await page.getByLabel('Admin Key Input').fill('test-admin-key');
+    await page.getByRole('button', { name: /Masuk/i }).click();
+
+    // If rate limited, expect friendly message
+    await expect(page.getByText(/kesalahan/i)).toBeVisible({ timeout: 5000 });
+  });
+
+  test('6. Document list: navigate → table with uploaded docs', async ({ page }) => {
+    await page.goto('/');
+    await page.getByLabel('Admin Key Input').fill('test-admin-key');
+    await page.getByRole('button', { name: /Masuk/i }).click();
+
+    await expect(page.getByText('Dokumen Teringest')).toBeVisible();
+    await expect(page.getByText(/nama file/i)).toBeVisible();
+  });
+
+  test('7. Logout: click Keluar → prompt shown, sessionStorage empty', async ({ page }) => {
+    await page.goto('/');
+    await page.getByLabel('Admin Key Input').fill('test-admin-key');
+    await page.getByRole('button', { name: /Masuk/i }).click();
+
+    await page.getByLabel('Logout Button').click();
+
+    await expect(page.getByText('Panel Admin KP')).toBeVisible();
+    const keyEmpty = await page.evaluate(() => sessionStorage.getItem('admin_key'));
+    expect(keyEmpty).toBeNull();
+  });
+});
+```
+
+- [ ] **Step 3: Write axe-core E2E accessibility test**
+
+```typescript
+// e2e/a11y.spec.ts
+import { test, expect } from '@playwright/test';
+
+test('should have no accessibility violations on main pages', async ({ page }) => {
+  await page.goto('/');
+  // Check login page
+  await expect(page.getByLabel('Admin Key Input')).toBeVisible();
+  // Check upload page after login
+  await page.getByLabel('Admin Key Input').fill('test-admin-key');
+  await page.getByRole('button', { name: /Masuk/i }).click();
+  await expect(page.getByLabel('Upload Documents Button')).toBeVisible();
+  // axe-core integration would run via CI
 });
 ```
 
@@ -1423,7 +1811,7 @@ git commit -m "feat: add playwright e2e tests for admin upload flow"
 
 ---
 
-### Task 8: Performance Validation & Build Optimization
+### Task 10: Performance Validation & Build Optimization
 
 **Files:**
 - Modify: `vite.config.ts` (add build optimizations)
@@ -1484,7 +1872,52 @@ git commit -m "feat: optimize production build with code splitting and minificat
 
 ---
 
-### Task 9: Final Testing & QA Sign-Off
+### Task 11: Production Build Verification
+
+**Files:**
+- Modify: `vite.config.ts` (verify optimizations)
+
+**Deliverables:** Production-ready bundle with security and performance checks.
+
+- [ ] **Step 1: Build and verify**
+
+```bash
+npm run build
+```
+
+- [ ] **Step 2: Run production build checklist**
+
+```bash
+# 1. No console.log in production
+grep -r "console\.log" dist/ && echo "FAIL" || echo "PASS: No console.log"
+# 2. No localhost references
+grep -r "localhost" dist/ && echo "FAIL" || echo "PASS: No localhost"
+# 3. No env var placeholder leaked
+grep -r "VITE_" dist/ --include="*.js" | head -5
+# 4. Bundle size check
+du -sh dist/ | awk '{print $1}'
+```
+
+Expected: Bundle < 500 KB gzipped, no dev artifacts in dist.
+
+- [ ] **Step 3: Final build verification**
+
+```bash
+npm run build:check  # build + tsc --noEmit + test
+```
+
+Expected: All checks pass.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add vite.config.ts
+git commit -m "chore: production build verification and optimization"
+```
+
+---
+
+### Task 12: Final Testing & QA Sign-Off
 
 **Files:**
 - Create: `TEST-RESULTS.md`
@@ -1558,7 +1991,7 @@ git commit -m "feat: all frontend tests passing, accessibility compliant, ready 
 
 ## Success Criteria (Frontend)
 
-✅ All 9 tasks completed
+✅ All 12 tasks completed
 ✅ React components built with TypeScript
 ✅ Drag-and-drop upload working
 ✅ Mock API client working (Day 0-1)

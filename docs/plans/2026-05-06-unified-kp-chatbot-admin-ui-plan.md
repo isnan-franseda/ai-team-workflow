@@ -31,7 +31,7 @@
 
 #### Morning (QA Lead)
 - [ ] Review PRD acceptance criteria; map to test scenarios
-- [ ] Set up test infrastructure (Jest, React Testing Library, Gradle)
+- [ ] Set up test infrastructure (Jest/Vitest for frontend, JUnit/Testcontainers for backend)
 - [ ] Create test strategy document
 - [ ] Identify scope gaps early (missing endpoints, unclear error codes)
 
@@ -157,6 +157,7 @@ See the following for task-by-task breakdown:
 | Integration bugs pile up Day 1-2 | Medium | High | QA paired with dev teams; bugs triaged daily; Day 2 blocker sync |
 | Performance fails Day 2 | Low | High | Performance validation starts EOD Day 1; optimizations Day 2 morning |
 | Scope creep | High | High | PM trade-off gate: descope features, accept risk, or extend timeline |
+| MiniMax embed dim mismatch (1024 vs 1536) | Low | High | Schema uses vector(1536) per embo-01 spec |
 
 ---
 

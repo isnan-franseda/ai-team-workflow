@@ -11,3 +11,6 @@ application-prod.yml
 *.iml
 .DS_Store
 out/
+
+# Local Claude config
+.claude/settings.local.json

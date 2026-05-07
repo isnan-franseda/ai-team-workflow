@@ -1,7 +1,10 @@
-import type { UploadResult, DocumentList } from "../types";
+import type { UploadResult, DocumentMetadata } from "../types";
 
 export const mockApiClient = {
-  async uploadSingle(file: File, docType: string, _adminKey: string): Promise<UploadResult> {
+  async uploadSingle(file: File, docType: string, adminKey: string): Promise<UploadResult> {
+    // adminKey would be used for authentication in real implementation
+    void adminKey;
+    // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
 
     return {
@@ -16,7 +19,10 @@ export const mockApiClient = {
     };
   },
 
-  async uploadBatch(files: File[], docTypes: string[], _adminKey: string): Promise<UploadResult[]> {
+  async uploadBatch(files: File[], docTypes: string[], adminKey: string): Promise<UploadResult[]> {
+    // adminKey would be used for authentication in real implementation
+    void adminKey;
+    // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 2000));
 
     return files.map((file, idx) => ({
@@ -31,21 +37,21 @@ export const mockApiClient = {
     }));
   },
 
-  async getDocuments(_adminKey: string, _docType?: string): Promise<DocumentList> {
+  async getDocuments(adminKey: string, docType?: string): Promise<DocumentMetadata[]> {
+    // adminKey and docType would be used in real implementation
+    void adminKey;
+    void docType;
+    // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    return {
-      documents: [
-        {
-          id: "doc-1",
-          filename: "faq-2026-05.pdf",
-          doc_type: "FAQ",
-          chunks_count: 42,
-          uploaded_at: new Date().toISOString(),
-          status: "ACTIVE",
-        },
-      ],
-      total: 1,
-    };
+    return [
+      {
+        document_id: "doc-1",
+        filename: "faq-2026-05.pdf",
+        doc_type: "FAQ",
+        created_at: new Date().toISOString(),
+        chunk_count: 42,
+      },
+    ];
   },
 };

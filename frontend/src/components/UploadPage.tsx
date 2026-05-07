@@ -19,20 +19,35 @@ export const UploadPage = ({ adminKey, onLogout }: UploadPageProps) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadDocuments();
-  }, [adminKey]);
+    let cancelled = false;
 
-  const loadDocuments = async () => {
-    setLoadingDocs(true);
-    try {
-      const docs = await apiClient.getDocuments(adminKey);
-      setDocuments(docs);
-    } catch (err) {
-      console.error("Failed to load documents", err);
-    } finally {
-      setLoadingDocs(false);
-    }
-  };
+    const fetchDocuments = async () => {
+      if (cancelled) return;
+
+      try {
+        const docs = await apiClient.getDocuments(adminKey);
+        if (!cancelled) {
+          setDocuments(docs);
+        }
+      } catch {
+        // Handle error silently
+      } finally {
+        if (!cancelled) {
+          setLoadingDocs(false);
+        }
+      }
+    };
+
+    // Defer fetch to avoid synchronous setState in effect
+    const timeoutId = setTimeout(() => {
+      fetchDocuments();
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [adminKey]);
 
   const handleUpload = async () => {
     if (files.length === 0 || docTypes.length === 0) {
@@ -54,7 +69,9 @@ export const UploadPage = ({ adminKey, onLogout }: UploadPageProps) => {
       setResults(uploadResults);
       setFiles([]);
       setDocTypes([]);
-      await loadDocuments();
+      // Refresh document list after upload
+      const docs = await apiClient.getDocuments(adminKey);
+      setDocuments(docs);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Terjadi kesalahan saat mengunggah");
     } finally {

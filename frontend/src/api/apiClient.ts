@@ -4,6 +4,10 @@ import { mapErrorToBahasa } from "../utils/errorMapper";
 
 const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
+interface DocumentsResponse {
+  documents?: DocumentMetadata[];
+}
+
 export const apiClient = {
   async uploadSingle(file: File, docType: string, adminKey: string): Promise<UploadResult> {
     try {
@@ -16,7 +20,7 @@ export const apiClient = {
       });
       return response.json() as Promise<UploadResult>;
     } catch (err) {
-      throw new Error(mapErrorToBahasa(err));
+      throw new Error(mapErrorToBahasa(err), { cause: err });
     }
   },
 
@@ -33,7 +37,7 @@ export const apiClient = {
       });
       return response.json() as Promise<UploadResult[]>;
     } catch (err) {
-      throw new Error(mapErrorToBahasa(err));
+      throw new Error(mapErrorToBahasa(err), { cause: err });
     }
   },
 
@@ -45,10 +49,10 @@ export const apiClient = {
         headers: { "X-Admin-Key": adminKey },
         searchParams,
       });
-      const data = await response.json();
+      const data = await response.json() as DocumentsResponse | DocumentMetadata[];
       return Array.isArray(data) ? data : (data.documents || []);
     } catch (err) {
-      throw new Error(mapErrorToBahasa(err));
+      throw new Error(mapErrorToBahasa(err), { cause: err });
     }
   },
 };

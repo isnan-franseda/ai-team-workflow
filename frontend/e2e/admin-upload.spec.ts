@@ -1,12 +1,19 @@
 import { test, expect } from "@playwright/test";
 
+const ADMIN_KEY = process.env.E2E_ADMIN_KEY || "test-admin-key";
+
 test.describe("Admin Upload Flow", () => {
   test("should upload document and see it in list", async ({ page }) => {
+    // Skip if no valid admin key is configured
+    if (ADMIN_KEY === "test-admin-key") {
+      test.skip(true, "Requires valid E2E_ADMIN_KEY environment variable");
+    }
+
     await page.goto("/");
 
     // Enter admin key
     const keyInput = page.getByLabel("Admin Key Input");
-    await keyInput.fill("test-admin-key");
+    await keyInput.fill(ADMIN_KEY);
     const loginButton = page.getByRole("button", { name: "Masuk" });
     await loginButton.click();
 
@@ -37,7 +44,7 @@ test.describe("Admin Upload Flow", () => {
     await page.goto("/");
 
     const keyInput = page.getByLabel("Admin Key Input");
-    await keyInput.fill("test-admin-key");
+    await keyInput.fill(ADMIN_KEY);
     await page.getByRole("button", { name: "Masuk" }).click();
 
     // Verify upload button is disabled when no file selected
@@ -49,7 +56,7 @@ test.describe("Admin Upload Flow", () => {
     await page.goto("/");
 
     const keyInput = page.getByLabel("Admin Key Input");
-    await keyInput.fill("test-admin-key");
+    await keyInput.fill(ADMIN_KEY);
     await page.getByRole("button", { name: "Masuk" }).click();
 
     // Wait for upload page

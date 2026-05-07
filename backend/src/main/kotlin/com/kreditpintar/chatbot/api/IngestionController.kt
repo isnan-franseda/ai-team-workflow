@@ -1,5 +1,6 @@
 package com.kreditpintar.chatbot.api
 
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.kreditpintar.chatbot.config.ChatbotProperties
 import com.kreditpintar.chatbot.ingestion.DocumentParser
 import com.kreditpintar.chatbot.ingestion.EmbeddingService
@@ -18,18 +19,21 @@ import org.springframework.web.multipart.MultipartFile
 private val logger = KotlinLogging.logger {}
 
 data class IngestionResponse(
-    val documentId: String,
-    val chunksCreated: Int,
-    val tokensUsed: Int,
-    val skipped: Boolean,
-    val durationMs: Long,
+    @JsonProperty("document_id") val documentId: String,
+    @JsonProperty("filename") val filename: String,
+    @JsonProperty("doc_type") val docType: String,
+    @JsonProperty("status") val status: String,   // "SUCCESS", "SKIPPED", or "FAILED"
+    @JsonProperty("chunks_created") val chunksCreated: Int,
+    @JsonProperty("tokens_used") val tokensUsed: Int,
+    @JsonProperty("duration_ms") val durationMs: Long,
+    @JsonProperty("error_message") val errorMessage: String? = null,
 )
 
 data class BatchIngestionResponse(
-    val results: List<IngestionResponse>,
-    val totalChunksCreated: Int,
-    val totalTokensUsed: Int,
-    val totalDurationMs: Long,
+    @JsonProperty("results") val results: List<IngestionResponse>,
+    @JsonProperty("total_chunks_created") val totalChunksCreated: Int,
+    @JsonProperty("total_tokens_used") val totalTokensUsed: Int,
+    @JsonProperty("total_duration_ms") val totalDurationMs: Long,
 )
 
 @RestController
@@ -73,20 +77,29 @@ class IngestionController(
                     chunks = chunks,
                 )
 
-            return ResponseEntity.ok(mapIngestionResult(result))
+            return ResponseEntity.ok(mapIngestionResult(result, parsed.metadata["filename"] ?: "unknown", docType))
         } catch (e: IllegalArgumentException) {
             return ResponseEntity.badRequest().body(mapOf("error" to (e.message ?: "Invalid input")))
         } catch (e: Exception) {
             logger.error(e) { "Document ingestion failed" }
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(mapOf("error" to "Ingestion failed: ${e.message}"))
+                .body(IngestionResponse(
+                    documentId = "error",
+                    filename = file.originalFilename ?: "unknown",
+                    docType = docType,
+                    status = "FAILED",
+                    chunksCreated = 0,
+                    tokensUsed = 0,
+                    durationMs = 0,
+                    errorMessage = e.message,
+                ))
         }
     }
 
     @PostMapping("/ingest/batch")
     fun ingestBatch(
         @RequestParam files: List<MultipartFile>,
-        @RequestParam docType: String,
+        @RequestParam("doc_types") docTypes: List<String>,
         @RequestHeader("X-Admin-Key") adminKey: String,
     ): ResponseEntity<Any> {
         if (adminKey != properties.adminKey) {
@@ -94,18 +107,22 @@ class IngestionController(
                 .body(mapOf("error" to "Invalid admin key"))
         }
 
-        val validDocTypes = listOf("FAQ", "TOS", "BRAND", "HOWTO")
-        if (docType !in validDocTypes) {
-            return ResponseEntity.badRequest()
-                .body(mapOf("error" to "Invalid docType. Must be one of: $validDocTypes"))
-        }
-
         val results = mutableListOf<IngestionResponse>()
         var totalChunks = 0
         var totalTokens = 0
         val startTime = System.currentTimeMillis()
 
-        for (file in files) {
+        val validDocTypes = listOf("FAQ", "TOS", "BRAND", "HOWTO")
+        if (docTypes.size != files.size) {
+            return ResponseEntity.badRequest()
+                .body(mapOf("error" to "doc_types count (${docTypes.size}) must match files count (${files.size})"))
+        }
+        if (docTypes.any { it !in validDocTypes }) {
+            return ResponseEntity.badRequest()
+                .body(mapOf("error" to "All doc_types must be one of: $validDocTypes"))
+        }
+
+        for ((file, docType) in files.zip(docTypes)) {
             try {
                 val bytes = file.bytes
                 val fileHash = EmbeddingService.computeFileHash(bytes)
@@ -121,7 +138,8 @@ class IngestionController(
                         chunks = chunks,
                     )
 
-                results.add(mapIngestionResult(result))
+                val resp = mapIngestionResult(result, parsed.metadata["filename"] ?: "unknown", docType)
+                results.add(resp)
                 totalChunks += result.chunksCreated
                 totalTokens += result.tokensUsed
             } catch (e: Exception) {
@@ -129,10 +147,13 @@ class IngestionController(
                 results.add(
                     IngestionResponse(
                         documentId = "error",
+                        filename = file.originalFilename ?: "unknown",
+                        docType = docType,
+                        status = "FAILED",
                         chunksCreated = 0,
                         tokensUsed = 0,
-                        skipped = false,
                         durationMs = 0,
+                        errorMessage = e.message,
                     ),
                 )
             }
@@ -148,12 +169,14 @@ class IngestionController(
         )
     }
 
-    private fun mapIngestionResult(result: IngestionResult): IngestionResponse {
+    private fun mapIngestionResult(result: IngestionResult, filename: String, docType: String): IngestionResponse {
         return IngestionResponse(
             documentId = result.documentId.toString(),
+            filename = filename,
+            docType = docType,
+            status = if (result.skipped) "SKIPPED" else "SUCCESS",
             chunksCreated = result.chunksCreated,
             tokensUsed = result.tokensUsed,
-            skipped = result.skipped,
             durationMs = result.durationMs,
         )
     }

@@ -22,6 +22,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import org.springframework.web.bind.annotation.RequestMapping
 import java.util.UUID
 
 class ChatControllerTest {
@@ -104,5 +105,12 @@ class ChatControllerTest {
         val result = chatController.getHistory(sessionId)
 
         assertEquals(404, result.statusCode.value())
+    }
+
+    @Test
+    fun `ChatController is mapped to api v1 chat`() {
+        val annotation = ChatController::class.java.getAnnotation(RequestMapping::class.java)
+        assertNotNull(annotation)
+        assertTrue(annotation.value.contains("/api/v1/chat"))
     }
 }

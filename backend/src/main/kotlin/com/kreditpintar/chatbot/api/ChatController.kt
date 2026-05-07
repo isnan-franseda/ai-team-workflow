@@ -38,7 +38,7 @@ data class ChatHistoryResponse(
 )
 
 @RestController
-@RequestMapping("/chat")
+@RequestMapping("/api/v1/chat")
 class ChatController(
     private val chatService: ChatService,
     private val sessionService: SessionService,

@@ -2,7 +2,6 @@ package com.kreditpintar.chatbot.config
 
 import io.github.bucket4j.Bandwidth
 import io.github.bucket4j.Bucket
-import io.github.bucket4j.Refill
 import org.springframework.context.annotation.Configuration
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
@@ -20,7 +19,7 @@ class RateLimitConfig(
     private fun createBucket(): Bucket {
         val bandwidth = Bandwidth.builder()
             .capacity(properties.rateLimit.requestsPerMinute.toLong())
-            .refill(Refill.greedy(properties.rateLimit.requestsPerMinute.toLong(), Duration.ofMinutes(1)))
+            .refillGreedy(properties.rateLimit.requestsPerMinute.toLong(), Duration.ofMinutes(1))
             .build()
         return Bucket.builder()
             .addLimit(bandwidth)

@@ -2,6 +2,7 @@ package com.kreditpintar.chatbot.ingestion
 
 import mu.KotlinLogging
 import org.apache.pdfbox.Loader
+import org.apache.pdfbox.text.PDFTextStripper
 import org.apache.poi.xwpf.usermodel.XWPFDocument
 import org.springframework.stereotype.Component
 import org.springframework.web.multipart.MultipartFile
@@ -41,9 +42,12 @@ class DocumentParser {
 
     private fun parsePdf(bytes: ByteArray): String {
         return Loader.loadPDF(bytes).use { document ->
+            val stripper = PDFTextStripper()
             val text = StringBuilder()
-            for (pageNum in 0..<document.numberOfPages) {
-                val pageText = document.getPage(pageNum).text
+            for (pageNum in 1..document.numberOfPages) {
+                stripper.startPage = pageNum
+                stripper.endPage = pageNum
+                val pageText = stripper.getText(document)
                 if (pageText.isNotBlank()) {
                     text.append(pageText).append("\n\n")
                 }

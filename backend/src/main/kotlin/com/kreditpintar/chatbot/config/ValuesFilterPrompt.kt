@@ -6,7 +6,7 @@ package com.kreditpintar.chatbot.config
  * IMPORTANT: Changes to this file require human review and approval per AGENTS.md.
  */
 object ValuesFilterPrompt {
-    const val VALUES_FILTER_PROMPT = """
+    val VALUES_FILTER_PROMPT = """
 Anda adalah evaluator keselarasan nilai untuk Kredit Pintar.
 Tugas: Evaluasi apakah konten web berikut sesuai dengan nilai-nilai Kredit Pintar.
 

@@ -92,7 +92,7 @@ class MiniMaxClient(
 
         val requestJson = objectMapper.createObjectNode().apply {
             put("model", properties.chatModel)
-            set("messages", messages)
+            set<ArrayNode>("messages", messages)
         }
 
         val response = post("/v1/chat/completions", requestJson)
@@ -134,8 +134,8 @@ class MiniMaxClient(
 
         val requestJson = objectMapper.createObjectNode().apply {
             put("model", properties.chatModel)
-            set("messages", messages)
-            set("tools", tools)
+            set<ArrayNode>("messages", messages)
+            set<ArrayNode>("tools", tools)
         }
 
         val response = post("/v1/chat/completions", requestJson)
@@ -175,7 +175,7 @@ class MiniMaxClient(
 
         val requestJson = objectMapper.createObjectNode().apply {
             put("model", properties.chatModel)
-            set("messages", messages)
+            set<ArrayNode>("messages", messages)
             put("temperature", 0.0)
         }
 
@@ -195,20 +195,21 @@ class MiniMaxClient(
                     .post(body.toString().toRequestBody(jsonMediaType))
                     .build()
 
-                client.newCall(request).execute().use { response ->
+                val result: JsonNode? = client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) {
                         val errorBody = response.body?.string() ?: "Unknown error"
                         logger.warn { "MiniMax API error (attempt $attempt): ${response.code} - $errorBody" }
                         if (attempt == properties.maxRetries) {
                             throw IOException("MiniMax API returned ${response.code}: $errorBody")
                         }
-                        continue
+                        null
+                    } else {
+                        val responseBody = response.body?.string()
+                            ?: throw IOException("Empty response body from MiniMax API")
+                        objectMapper.readTree(responseBody)
                     }
-
-                    val responseBody = response.body?.string()
-                        ?: throw IOException("Empty response body from MiniMax API")
-                    return objectMapper.readTree(responseBody)
                 }
+                if (result != null) return result
             } catch (e: IOException) {
                 lastException = e
                 logger.warn(e) { "MiniMax API call failed (attempt $attempt)" }

@@ -1,7 +1,7 @@
 package com.kreditpintar.chatbot.config
 
 object OutputValidatorPrompt {
-    const val VALIDATOR_PROMPT = """
+    val VALIDATOR_PROMPT = """
 Anda adalah validator output untuk chatbot Kredit Pintar.
 Tugas: Verifikasi bahwa respons chatbot berikut memenuhi standar keamanan dan nilai-nilai KP.
 

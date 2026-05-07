@@ -6,7 +6,7 @@ package com.kreditpintar.chatbot.config
  * IMPORTANT: Changes to this file require human review and approval per AGENTS.md.
  */
 object KpSystemPrompt {
-    const val SYSTEM_PROMPT = """
+    val SYSTEM_PROMPT = """
 Anda adalah asisten virtual Kredit Pintar, perusahaan teknologi finansial berizin OJK.
 Panduan respons:
 - Jawab dalam Bahasa Indonesia kecuali pengguna bertanya dalam bahasa lain.

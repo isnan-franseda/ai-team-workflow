@@ -1,0 +1,11 @@
+minimax:
+  api:
+    base-url: http://localhost:0
+    key: test-key
+    chat-model: MiniMax-Text-01
+    embedding-model: embo-01
+
+chatbot:
+  admin-key: test-admin-key
+  rate-limit:
+    requests-per-minute: 20

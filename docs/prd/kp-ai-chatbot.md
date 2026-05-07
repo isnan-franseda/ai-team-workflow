@@ -37,7 +37,7 @@ Active and prospective Kredit Pintar (KP) borrowers who need quick, accurate inf
 - Processing new loan applications or making credit decisions.
 - Returning real-time individual loan balances or approval status from KP core banking.
 - Multi-language support beyond Bahasa Indonesia (English fallback only for unrecognized queries).
-- Voice-based interaction or a consumer-facing chat-widget UI (MVP is API-only).
+- Voice-based interaction.
 - Using urgency tactics, fear-based messaging, or competitor comparisons to drive engagement.
 
 ---
@@ -70,6 +70,7 @@ Active and prospective Kredit Pintar (KP) borrowers who need quick, accurate inf
 
 **COULD:**
 - As a KP borrower, I want to start a new conversation while keeping access to old ones so that I can manage multiple topics over time.
+- As a KP borrower, I want the chat interface to be usable on my mobile phone so that I can ask questions anywhere.
 - As a KP content manager, I want to upload new FAQ documents via an admin endpoint so that the chatbot knowledge stays current without a code deployment.
 
 ---
@@ -88,6 +89,15 @@ Active and prospective Kredit Pintar (KP) borrowers who need quick, accurate inf
 | FR-08 | The admin ingestion endpoint MUST accept PDF, DOCX, and TXT files, chunk them, embed them, and store them in pgvector idempotently (by file hash). |
 | FR-09 | If the Output Validator marks a response as FAIL, the system MUST return a safe fallback message and log the failure for human review. |
 | FR-10 | If no relevant document chunks are found, the chatbot MAY fall back to web search, subject to FR-04. |
+| FR-11 | The frontend chat UI MUST provide a text input field and a send button for users to submit messages. |
+| FR-12 | The frontend MUST display conversation history chronologically, clearly distinguishing user messages from assistant messages. |
+| FR-13 | The frontend MUST render source citations (doc_type and source filename) as clickable or visible badges alongside assistant responses. |
+| FR-14 | The frontend MUST show a typing indicator while the backend is generating a response. |
+| FR-15 | The frontend MUST provide a "New Chat" button that creates a new session via `/chat/session`. |
+| FR-16 | The frontend MUST display a friendly Bahasa Indonesia fallback message when the Output Validator rejects a response. |
+| FR-17 | The frontend MUST enforce rate-limit awareness by disabling input and showing a warning if the user exceeds 20 requests/minute. |
+| FR-18 | The frontend MUST be responsive and usable on screen widths from 320 px (mobile) to 1920 px (desktop). |
+| FR-19 | The frontend MUST use Tailwind CSS for styling and contain no inline styles. |
 
 ---
 
@@ -100,7 +110,8 @@ Active and prospective Kredit Pintar (KP) borrowers who need quick, accurate inf
 | Rate limiting | 20 requests/minute per session (Bucket4j). |
 | Security | No PII stored in application logs; session data encrypted at rest. |
 | Language | Bahasa Indonesia primary; English fallback for unrecognized queries. |
-| Accessibility | N/A (API-only for MVP). |
+| Accessibility | WCAG 2.1 AA compliant; all interactive elements have Indonesian `aria-label` attributes; axe-core 0 violations. |
+| Responsiveness | Usable on mobile (320 px), tablet, and desktop (1920 px). |
 | Scalability | Ingestion pipeline must handle documents up to 50 MB without blocking the chat API. |
 
 ---
@@ -139,6 +150,27 @@ Feature: KP Chatbot Response
     Then the chatbot understands the anaphora
     And responds with context from the earlier part of the conversation
     And includes the prior document citations where relevant
+
+  Scenario: User sends message via chat UI and sees typing indicator
+    Given a user is on the chat page
+    When the user types "Apa itu Kredit Pintar?" and clicks send
+    Then the message appears in the conversation history
+    And a typing indicator is shown
+    And within 3 seconds the assistant response appears in Bahasa Indonesia
+    And the response displays a source citation badge
+
+  Scenario: User starts a new conversation
+    Given a user has an active conversation with 2 messages
+    When the user clicks the "Obrolan Baru" button
+    Then a new session is created
+    And the conversation history is cleared
+    And the user sees an empty chat welcome screen
+
+  Scenario: Rate limit reached in the UI
+    Given a user has sent 20 messages in the last 60 seconds
+    When the user attempts to send a 21st message
+    Then the send button is disabled
+    And the user sees a warning: "Anda telah mencapai batas pengiriman. Silakan tunggu sebentar."
 ```
 
 ---
@@ -148,7 +180,6 @@ Feature: KP Chatbot Response
 - Multi-language support beyond Bahasa Indonesia + English fallback — future phase.
 - Voice interface.
 - Integration with KP core banking system (read individual loan data directly).
-- Consumer chat-widget UI (API only for MVP).
 - Real-time payment or disbursement actions.
 - Agent hand-off / live-chat escalation.
 - A/B testing of system prompts without human PO review.
@@ -164,6 +195,8 @@ Feature: KP Chatbot Response
 | 3 | Who monitors the values-filter rejection log on a daily/weekly basis? | Product / Compliance | — |
 | 4 | What is the source for the CSAT ≥ 4.2 target and deflection-rate benchmark? | Product / Data | — |
 | 5 | Do we need a formal ADR for the choice of MiniMax over alternative LLM providers? | Architect | — |
+| 6 | Should the consumer chat UI be a standalone React app or embedded widget inside the existing KP mobile app? | Product / Frontend | — |
+| 7 | Is there a Figma design system or mockup for the borrower-facing chat interface? | Design / PO | — |
 
 ---
 

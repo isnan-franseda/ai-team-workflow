@@ -2,13 +2,17 @@ package com.kreditpintar.chatbot.api
 
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.kreditpintar.chatbot.config.ChatbotProperties
+import com.kreditpintar.chatbot.domain.ChunkRepository
+import com.kreditpintar.chatbot.domain.DocumentRepository
 import com.kreditpintar.chatbot.ingestion.DocumentParser
 import com.kreditpintar.chatbot.ingestion.EmbeddingService
 import com.kreditpintar.chatbot.ingestion.IngestionResult
 import com.kreditpintar.chatbot.ingestion.TextChunker
 import mu.KotlinLogging
+import org.springframework.data.domain.PageRequest
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
@@ -22,7 +26,8 @@ data class IngestionResponse(
     @JsonProperty("document_id") val documentId: String,
     @JsonProperty("filename") val filename: String,
     @JsonProperty("doc_type") val docType: String,
-    @JsonProperty("status") val status: String,   // "SUCCESS", "SKIPPED", or "FAILED"
+    // "SUCCESS", "SKIPPED", or "FAILED"
+    @JsonProperty("status") val status: String,
     @JsonProperty("chunks_created") val chunksCreated: Int,
     @JsonProperty("tokens_used") val tokensUsed: Int,
     @JsonProperty("duration_ms") val durationMs: Long,
@@ -36,6 +41,19 @@ data class BatchIngestionResponse(
     @JsonProperty("total_duration_ms") val totalDurationMs: Long,
 )
 
+data class DocumentSummary(
+    @JsonProperty("document_id") val documentId: String,
+    @JsonProperty("filename") val filename: String,
+    @JsonProperty("doc_type") val docType: String,
+    @JsonProperty("created_at") val createdAt: String,
+    @JsonProperty("chunk_count") val chunkCount: Int,
+)
+
+data class DocumentListResponse(
+    @JsonProperty("documents") val documents: List<DocumentSummary>,
+    @JsonProperty("total") val total: Long,
+)
+
 @RestController
 @RequestMapping("/admin")
 class IngestionController(
@@ -43,6 +61,8 @@ class IngestionController(
     private val textChunker: TextChunker,
     private val embeddingService: EmbeddingService,
     private val properties: ChatbotProperties,
+    private val documentRepository: DocumentRepository,
+    private val chunkRepository: ChunkRepository,
 ) {
     @PostMapping("/ingest")
     fun ingestDocument(
@@ -83,16 +103,18 @@ class IngestionController(
         } catch (e: Exception) {
             logger.error(e) { "Document ingestion failed" }
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(IngestionResponse(
-                    documentId = "error",
-                    filename = file.originalFilename ?: "unknown",
-                    docType = docType,
-                    status = "FAILED",
-                    chunksCreated = 0,
-                    tokensUsed = 0,
-                    durationMs = 0,
-                    errorMessage = e.message,
-                ))
+                .body(
+                    IngestionResponse(
+                        documentId = "error",
+                        filename = file.originalFilename ?: "unknown",
+                        docType = docType,
+                        status = "FAILED",
+                        chunksCreated = 0,
+                        tokensUsed = 0,
+                        durationMs = 0,
+                        errorMessage = e.message,
+                    ),
+                )
         }
     }
 
@@ -169,7 +191,49 @@ class IngestionController(
         )
     }
 
-    private fun mapIngestionResult(result: IngestionResult, filename: String, docType: String): IngestionResponse {
+    @GetMapping("/documents")
+    fun listDocuments(
+        @RequestParam(defaultValue = "50") limit: Int,
+        @RequestParam(required = false) doc_type: String?,
+        @RequestHeader("X-Admin-Key") adminKey: String,
+    ): ResponseEntity<Any> {
+        if (adminKey != properties.adminKey) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(mapOf("error" to "Invalid admin key"))
+        }
+
+        val pageable = PageRequest.of(0, limit.coerceIn(1, 200))
+        val page =
+            if (doc_type != null) {
+                documentRepository.findByDocType(doc_type, pageable)
+            } else {
+                documentRepository.findAll(pageable)
+            }
+
+        val documents =
+            page.content.map { doc ->
+                DocumentSummary(
+                    documentId = doc.id.toString(),
+                    filename = doc.source,
+                    docType = doc.docType,
+                    createdAt = doc.createdAt.toString(),
+                    chunkCount = chunkRepository.countByDocId(doc.id),
+                )
+            }
+
+        return ResponseEntity.ok(
+            DocumentListResponse(
+                documents = documents,
+                total = page.totalElements,
+            ),
+        )
+    }
+
+    private fun mapIngestionResult(
+        result: IngestionResult,
+        filename: String,
+        docType: String,
+    ): IngestionResponse {
         return IngestionResponse(
             documentId = result.documentId.toString(),
             filename = filename,

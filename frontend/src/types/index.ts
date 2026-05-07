@@ -10,17 +10,11 @@ export interface UploadResult {
 }
 
 export interface DocumentMetadata {
-  id: string;
+  document_id: string;
   filename: string;
   doc_type: string;
-  chunks_count: number;
-  uploaded_at: string;
-  status: string;
-}
-
-export interface DocumentList {
-  documents: DocumentMetadata[];
-  total: number;
+  created_at: string;
+  chunk_count: number;
 }
 
 export interface AdminSession {

@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { UploadZone } from "./UploadZone";
 import { DocumentList } from "./DocumentList";
-import { mockApiClient } from "../api/mockClient";
+import { apiClient } from "../api/apiClient";
 import type { UploadResult, DocumentMetadata } from "../types";
 
 interface UploadPageProps {
@@ -18,11 +18,15 @@ export const UploadPage = ({ adminKey, onLogout }: UploadPageProps) => {
   const [results, setResults] = useState<UploadResult[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    loadDocuments();
+  }, [adminKey]);
+
   const loadDocuments = async () => {
     setLoadingDocs(true);
     try {
-      const docList = await mockApiClient.getDocuments(adminKey);
-      setDocuments(docList.documents);
+      const docs = await apiClient.getDocuments(adminKey);
+      setDocuments(docs);
     } catch (err) {
       console.error("Failed to load documents", err);
     } finally {
@@ -43,9 +47,9 @@ export const UploadPage = ({ adminKey, onLogout }: UploadPageProps) => {
     try {
       let uploadResults: UploadResult[];
       if (files.length === 1) {
-        uploadResults = [await mockApiClient.uploadSingle(files[0], docTypes[0], adminKey)];
+        uploadResults = [await apiClient.uploadSingle(files[0], docTypes[0], adminKey)];
       } else {
-        uploadResults = await mockApiClient.uploadBatch(files, docTypes, adminKey);
+        uploadResults = await apiClient.uploadBatch(files, docTypes, adminKey);
       }
       setResults(uploadResults);
       setFiles([]);

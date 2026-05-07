@@ -1,5 +1,5 @@
 import ky from "ky";
-import type { UploadResult, DocumentList } from "../types";
+import type { UploadResult, DocumentMetadata } from "../types";
 import { mapErrorToBahasa } from "../utils/errorMapper";
 
 const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8080";
@@ -37,7 +37,7 @@ export const apiClient = {
     }
   },
 
-  async getDocuments(adminKey: string, docType?: string): Promise<DocumentList> {
+  async getDocuments(adminKey: string, docType?: string): Promise<DocumentMetadata[]> {
     try {
       const searchParams = new URLSearchParams();
       if (docType) searchParams.set("doc_type", docType);
@@ -45,7 +45,8 @@ export const apiClient = {
         headers: { "X-Admin-Key": adminKey },
         searchParams,
       });
-      return response.json() as Promise<DocumentList>;
+      const data = await response.json();
+      return Array.isArray(data) ? data : (data.documents || []);
     } catch (err) {
       throw new Error(mapErrorToBahasa(err));
     }

@@ -35,16 +35,16 @@ export const DocumentList = ({ documents, loading }: DocumentListProps) => {
         </thead>
         <tbody>
           {documents.map((doc) => (
-            <tr key={doc.id} className="border-b hover:bg-gray-50">
+            <tr key={doc.document_id} className="border-b hover:bg-gray-50">
               <td className="px-6 py-4 text-sm">{doc.filename}</td>
               <td className="px-6 py-4 text-sm">
                 <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
                   {doc.doc_type}
                 </span>
               </td>
-              <td className="px-6 py-4 text-sm">{doc.chunks_count}</td>
+              <td className="px-6 py-4 text-sm">{doc.chunk_count}</td>
               <td className="px-6 py-4 text-sm">
-                {new Date(doc.uploaded_at).toLocaleDateString("id-ID")}
+                {new Date(doc.created_at).toLocaleDateString("id-ID")}
               </td>
             </tr>
           ))}

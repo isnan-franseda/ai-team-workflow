@@ -2,18 +2,15 @@ package com.kreditpintar.chatbot.service
 
 import com.kreditpintar.chatbot.config.ChatbotProperties
 import com.kreditpintar.chatbot.config.MiniMaxClient
-import com.kreditpintar.chatbot.config.OutputValidatorPrompt
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import org.mockito.Mockito.mock
 import org.mockito.kotlin.whenever
 
 class OutputValidatorServiceTest {
-
     private lateinit var miniMaxClient: MiniMaxClient
     private lateinit var properties: ChatbotProperties
     private lateinit var outputValidatorService: OutputValidatorService
@@ -21,9 +18,10 @@ class OutputValidatorServiceTest {
     @BeforeEach
     fun setUp() {
         miniMaxClient = mock()
-        properties = ChatbotProperties().apply {
-            fallbackMessage = "Maaf, saya tidak dapat menjawab."
-        }
+        properties =
+            ChatbotProperties().apply {
+                fallbackMessage = "Maaf, saya tidak dapat menjawab."
+            }
         outputValidatorService = OutputValidatorService(miniMaxClient, properties)
     }
 

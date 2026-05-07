@@ -8,11 +8,11 @@ private val logger = KotlinLogging.logger {}
 
 @Service
 class ContextAssembler(
-    private val properties: ChatbotProperties
+    private val properties: ChatbotProperties,
 ) {
     fun assemble(
         docResults: List<VectorSearchResult>,
-        filteredWebResults: List<FilteredWebResult>
+        filteredWebResults: List<FilteredWebResult>,
     ): AssembledContext {
         val docMaxChars = properties.context.docMaxChars
         val webMaxChars = properties.context.webMaxChars
@@ -51,18 +51,18 @@ class ContextAssembler(
 
         return AssembledContext(
             context = fullContext,
-            citations = citations
+            citations = citations,
         )
     }
 }
 
 data class AssembledContext(
     val context: String,
-    val citations: List<SourceCitation>
+    val citations: List<SourceCitation>,
 )
 
 data class SourceCitation(
     val source: String,
     val docType: String,
-    val type: String
+    val type: String,
 )

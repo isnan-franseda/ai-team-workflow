@@ -1,5 +1,6 @@
 package com.kreditpintar.chatbot.api
 
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.kreditpintar.chatbot.config.RateLimitConfig
 import com.kreditpintar.chatbot.service.ChatService
 import com.kreditpintar.chatbot.service.SessionService
@@ -18,23 +19,25 @@ import java.util.UUID
 private val logger = KotlinLogging.logger {}
 
 data class CreateSessionResponse(
-    val sessionId: UUID
+    @JsonProperty("session_id") val sessionId: UUID,
+    @JsonProperty("created_at") val createdAt: String = java.time.Instant.now().toString(),
 )
 
 data class ChatMessageRequest(
-    val sessionId: UUID,
-    val message: String
+    @JsonProperty("session_id") val sessionId: UUID,
+    @JsonProperty("message") val message: String,
+    @JsonProperty("language") val language: String = "id",
 )
 
 data class ChatHistoryMessage(
-    val role: String,
-    val content: String,
-    val createdAt: String
+    @JsonProperty("role") val role: String,
+    @JsonProperty("content") val content: String,
+    @JsonProperty("created_at") val createdAt: String,
 )
 
 data class ChatHistoryResponse(
-    val sessionId: UUID,
-    val messages: List<ChatHistoryMessage>
+    @JsonProperty("session_id") val sessionId: UUID,
+    @JsonProperty("messages") val messages: List<ChatHistoryMessage>,
 )
 
 @RestController
@@ -42,7 +45,7 @@ data class ChatHistoryResponse(
 class ChatController(
     private val chatService: ChatService,
     private val sessionService: SessionService,
-    private val rateLimitConfig: RateLimitConfig
+    private val rateLimitConfig: RateLimitConfig,
 ) {
     @PostMapping("/session")
     fun createSession(): ResponseEntity<CreateSessionResponse> {
@@ -50,11 +53,14 @@ class ChatController(
         return ResponseEntity.ok(CreateSessionResponse(sessionId = session.id))
     }
 
-    @PostMapping("/message")
-    fun sendMessage(@RequestBody request: ChatMessageRequest): ResponseEntity<Any> {
-        val session = sessionService.getSession(request.sessionId)
-            ?: return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(mapOf("error" to "Session not found: ${request.sessionId}"))
+    @PostMapping("/send")
+    fun sendMessage(
+        @RequestBody request: ChatMessageRequest,
+    ): ResponseEntity<Any> {
+        val session =
+            sessionService.getSession(request.sessionId)
+                ?: return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(mapOf("error" to "Session not found: ${request.sessionId}"))
 
         if (request.message.isBlank()) {
             return ResponseEntity.badRequest()
@@ -69,7 +75,7 @@ class ChatController(
             logger.warn { "Rate limit exceeded for session=${request.sessionId}, wait ${waitForRefill}s" }
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                 .header("X-Rate-Limit-Retry-After-Seconds", waitForRefill.toString())
-                .body(mapOf("error" to "Rate limit exceeded. Try again in ${waitForRefill} seconds."))
+                .body(mapOf("error" to "Rate limit exceeded. Try again in $waitForRefill seconds."))
         }
 
         val response = chatService.chat(request.sessionId, request.message)
@@ -77,25 +83,29 @@ class ChatController(
     }
 
     @GetMapping("/history/{sessionId}")
-    fun getHistory(@PathVariable sessionId: UUID): ResponseEntity<Any> {
-        val session = sessionService.getSession(sessionId)
-            ?: return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(mapOf("error" to "Session not found: $sessionId"))
+    fun getHistory(
+        @PathVariable sessionId: UUID,
+    ): ResponseEntity<Any> {
+        val session =
+            sessionService.getSession(sessionId)
+                ?: return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(mapOf("error" to "Session not found: $sessionId"))
 
         val messages = sessionService.getConversationHistory(sessionId)
-        val historyMessages = messages.map { msg ->
-            ChatHistoryMessage(
-                role = msg.role,
-                content = msg.content,
-                createdAt = msg.createdAt.toString()
-            )
-        }
+        val historyMessages =
+            messages.map { msg ->
+                ChatHistoryMessage(
+                    role = msg.role,
+                    content = msg.content,
+                    createdAt = msg.createdAt.toString(),
+                )
+            }
 
         return ResponseEntity.ok(
             ChatHistoryResponse(
                 sessionId = sessionId,
-                messages = historyMessages
-            )
+                messages = historyMessages,
+            ),
         )
     }
 }

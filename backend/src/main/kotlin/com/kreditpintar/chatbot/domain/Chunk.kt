@@ -14,23 +14,17 @@ import java.util.UUID
 class Chunk(
     @Id
     val id: UUID = UUID.randomUUID(),
-
     @Column(name = "doc_id", nullable = false)
     val docId: UUID,
-
     @Column(name = "chunk_text", nullable = false, columnDefinition = "TEXT")
     val chunkText: String,
-
     @Column(name = "chunk_index", nullable = false)
     val chunkIndex: Int,
-
     @Column(name = "token_count", nullable = false)
     val tokenCount: Int = 0,
-
     @Column(name = "embedding", columnDefinition = "vector(1536)")
     var embedding: PGvector? = null,
-
     @CreationTimestamp
     @Column(name = "created_at", nullable = false)
-    val createdAt: Instant = Instant.now()
+    val createdAt: Instant = Instant.now(),
 )

@@ -13,11 +13,9 @@ import java.util.UUID
 class Session(
     @Id
     val id: UUID = UUID.randomUUID(),
-
     @CreationTimestamp
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
-
     @Column(name = "last_active_at", nullable = false)
-    var lastActiveAt: Instant = Instant.now()
+    var lastActiveAt: Instant = Instant.now(),
 )

@@ -11,7 +11,9 @@ class ChatbotProperties {
     var search = SearchProperties()
     var chunking = ChunkingProperties()
     var ingestion = IngestionProperties()
-    var fallbackMessage: String = "Maaf, saya tidak dapat menjawab pertanyaan Anda saat ini. Silakan hubungi layanan pelanggan Kredit Pintar untuk bantuan lebih lanjut."
+    var fallbackMessage: String =
+        "Maaf, saya tidak dapat menjawab pertanyaan Anda saat ini. " +
+            "Silakan hubungi layanan pelanggan Kredit Pintar untuk bantuan lebih lanjut."
     var adminKey: String = "dev-admin-key"
 
     class RateLimitProperties {

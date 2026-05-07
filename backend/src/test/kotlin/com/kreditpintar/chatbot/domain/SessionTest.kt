@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test
 import java.util.UUID
 
 class SessionTest {
-
     @Test
     fun `session has unique ID`() {
         val session1 = Session()
@@ -25,11 +24,12 @@ class SessionTest {
     @Test
     fun `message has correct role and content`() {
         val sessionId = UUID.randomUUID()
-        val message = Message(
-            sessionId = sessionId,
-            role = "user",
-            content = "Test message"
-        )
+        val message =
+            Message(
+                sessionId = sessionId,
+                role = "user",
+                content = "Test message",
+            )
 
         assertEquals(sessionId, message.sessionId)
         assertEquals("user", message.role)

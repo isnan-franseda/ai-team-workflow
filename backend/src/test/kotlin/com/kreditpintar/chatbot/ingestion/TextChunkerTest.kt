@@ -7,16 +7,16 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 class TextChunkerTest {
-
     private lateinit var properties: ChatbotProperties
     private lateinit var textChunker: TextChunker
 
     @BeforeEach
     fun setUp() {
-        properties = ChatbotProperties().apply {
-            chunking.chunkSize = 400
-            chunking.overlap = 50
-        }
+        properties =
+            ChatbotProperties().apply {
+                chunking.chunkSize = 400
+                chunking.overlap = 50
+            }
         textChunker = TextChunker(properties)
     }
 
@@ -43,11 +43,12 @@ class TextChunkerTest {
 
     @Test
     fun `chunks preserve content coverage`() {
-        val text = buildString {
-            repeat(20) {
-                append("Kalimat nomor $it untuk pengujian. ")
+        val text =
+            buildString {
+                repeat(20) {
+                    append("Kalimat nomor $it untuk pengujian. ")
+                }
             }
-        }
         val chunks = textChunker.chunk(text)
 
         val allChunkTexts = chunks.joinToString("") { it.text }

@@ -15,27 +15,29 @@ data class VectorSearchResult(
     val chunkText: String,
     val source: String,
     val docType: String,
-    val similarity: Double
+    val similarity: Double,
 )
 
 @Service
 class VectorSearchService(
     private val miniMaxClient: MiniMaxClient,
     private val chunkRepository: ChunkRepository,
-    private val properties: ChatbotProperties
+    private val properties: ChatbotProperties,
 ) {
     fun search(query: String): List<VectorSearchResult> {
-        val queryEmbedding = miniMaxClient.embed(listOf(query)).firstOrNull()
-            ?: run {
-                logger.warn { "Failed to embed query: $query" }
-                return emptyList()
-            }
+        val queryEmbedding =
+            miniMaxClient.embed(listOf(query)).firstOrNull()
+                ?: run {
+                    logger.warn { "Failed to embed query: $query" }
+                    return emptyList()
+                }
 
         val queryVectorStr = queryEmbedding.embedding.joinToString(",", "[", "]")
-        val results = chunkRepository.findTopKBySimilarity(
-            queryVector = queryVectorStr,
-            limit = properties.search.topK
-        )
+        val results =
+            chunkRepository.findTopKBySimilarity(
+                queryVector = queryVectorStr,
+                limit = properties.search.topK,
+            )
 
         return results
             .map { row ->
@@ -45,7 +47,7 @@ class VectorSearchService(
                     chunkText = row[2] as String,
                     source = row[4] as String,
                     docType = row[5] as String,
-                    similarity = (row[6] as Number).toDouble()
+                    similarity = (row[6] as Number).toDouble(),
                 )
             }
             .filter { it.similarity >= properties.search.similarityThreshold }

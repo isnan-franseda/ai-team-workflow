@@ -13,17 +13,13 @@ import java.util.UUID
 class Document(
     @Id
     val id: UUID = UUID.randomUUID(),
-
     @Column(name = "source", nullable = false, length = 500)
     val source: String,
-
     @Column(name = "doc_type", nullable = false, length = 50)
     val docType: String,
-
     @Column(name = "file_hash", nullable = false, length = 64)
     val fileHash: String,
-
     @CreationTimestamp
     @Column(name = "created_at", nullable = false)
-    val createdAt: Instant = Instant.now()
+    val createdAt: Instant = Instant.now(),
 )

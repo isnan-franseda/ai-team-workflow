@@ -13,12 +13,11 @@ data class ChunkSearchResult(
     val chunkIndex: Int,
     val source: String,
     val docType: String,
-    val similarity: Double
+    val similarity: Double,
 )
 
 @Repository
 interface ChunkRepository : JpaRepository<Chunk, UUID> {
-
     @Query(
         nativeQuery = true,
         value = """
@@ -29,13 +28,14 @@ interface ChunkRepository : JpaRepository<Chunk, UUID> {
             WHERE c.embedding IS NOT NULL
             ORDER BY c.embedding <=> :queryVector
             LIMIT :limit
-        """
+        """,
     )
     fun findTopKBySimilarity(
         @Param("queryVector") queryVector: String,
-        @Param("limit") limit: Int
+        @Param("limit") limit: Int,
     ): List<Array<Any>>
 
     fun countByDocId(docId: UUID): Int
+
     fun deleteByDocId(docId: UUID)
 }

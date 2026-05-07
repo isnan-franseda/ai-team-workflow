@@ -6,12 +6,12 @@ import org.springframework.stereotype.Component
 data class TextChunk(
     val text: String,
     val index: Int,
-    val tokenCount: Int
+    val tokenCount: Int,
 )
 
 @Component
 class TextChunker(
-    private val properties: ChatbotProperties
+    private val properties: ChatbotProperties,
 ) {
     fun chunk(text: String): List<TextChunk> {
         val chunkSize = properties.chunking.chunkSize
@@ -22,8 +22,8 @@ class TextChunker(
                 TextChunk(
                     text = text,
                     index = 0,
-                    tokenCount = estimateTokens(text)
-                )
+                    tokenCount = estimateTokens(text),
+                ),
             )
         }
 
@@ -40,23 +40,28 @@ class TextChunker(
                     TextChunk(
                         text = chunkText,
                         index = index,
-                        tokenCount = estimateTokens(chunkText)
-                    )
+                        tokenCount = estimateTokens(chunkText),
+                    ),
                 )
                 index++
             }
 
-            position = if (end >= text.length) {
-                text.length
-            } else {
-                end - overlap
-            }
+            position =
+                if (end >= text.length) {
+                    text.length
+                } else {
+                    end - overlap
+                }
         }
 
         return chunks
     }
 
-    private fun findChunkEnd(text: String, start: Int, maxChunkSize: Int): Int {
+    private fun findChunkEnd(
+        text: String,
+        start: Int,
+        maxChunkSize: Int,
+    ): Int {
         val targetEnd = start + maxChunkSize
         if (targetEnd >= text.length) return text.length
 

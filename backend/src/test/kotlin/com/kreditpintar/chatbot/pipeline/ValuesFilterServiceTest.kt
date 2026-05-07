@@ -10,7 +10,6 @@ import org.mockito.Mockito.mock
 import org.mockito.kotlin.whenever
 
 class ValuesFilterServiceTest {
-
     private lateinit var miniMaxClient: MiniMaxClient
     private lateinit var valuesFilterService: ValuesFilterService
 
@@ -22,13 +21,14 @@ class ValuesFilterServiceTest {
 
     @Test
     fun `filter passes aligned web content`() {
-        val webResults = listOf(
-            WebSearchEntry(
-                title = "OJK Regulation",
-                content = "Regulasi OJK tentang pinjaman online yang sah.",
-                url = "https://ojk.go.id/regulasi"
+        val webResults =
+            listOf(
+                WebSearchEntry(
+                    title = "OJK Regulation",
+                    content = "Regulasi OJK tentang pinjaman online yang sah.",
+                    url = "https://ojk.go.id/regulasi",
+                ),
             )
-        )
 
         whenever(miniMaxClient.validateOutput(org.mockito.kotlin.any(), org.mockito.kotlin.any()))
             .thenReturn("PASS\nAlasan: Konten informatif dan sejalan dengan nilai KP")
@@ -42,13 +42,14 @@ class ValuesFilterServiceTest {
 
     @Test
     fun `filter rejects competitor promotion content`() {
-        val webResults = listOf(
-            WebSearchEntry(
-                title = "Competitor Promo",
-                content = "Pinjaman cepat cair, lebih murah dari Kredit Pintar!",
-                url = "https://competitor.com/promo"
+        val webResults =
+            listOf(
+                WebSearchEntry(
+                    title = "Competitor Promo",
+                    content = "Pinjaman cepat cair, lebih murah dari Kredit Pintar!",
+                    url = "https://competitor.com/promo",
+                ),
             )
-        )
 
         whenever(miniMaxClient.validateOutput(org.mockito.kotlin.any(), org.mockito.kotlin.any()))
             .thenReturn("FAIL\nAlasan: Membandingkan dengan kompetitor secara negatif")
@@ -62,18 +63,19 @@ class ValuesFilterServiceTest {
 
     @Test
     fun `filter handles mixed results`() {
-        val webResults = listOf(
-            WebSearchEntry(
-                title = "Good content",
-                content = "Informasi edukasi keuangan.",
-                url = "https://example.com/good"
-            ),
-            WebSearchEntry(
-                title = "Bad content",
-                content = "Pinjaman darurat tanpa syarat!",
-                url = "https://example.com/bad"
+        val webResults =
+            listOf(
+                WebSearchEntry(
+                    title = "Good content",
+                    content = "Informasi edukasi keuangan.",
+                    url = "https://example.com/good",
+                ),
+                WebSearchEntry(
+                    title = "Bad content",
+                    content = "Pinjaman darurat tanpa syarat!",
+                    url = "https://example.com/bad",
+                ),
             )
-        )
 
         whenever(miniMaxClient.validateOutput(org.mockito.kotlin.any(), org.mockito.kotlin.any()))
             .thenReturn("PASS\nAlasan: Konten edukatif")
@@ -88,13 +90,14 @@ class ValuesFilterServiceTest {
 
     @Test
     fun `filter marks all as FAIL when MiniMax call fails`() {
-        val webResults = listOf(
-            WebSearchEntry(
-                title = "Any content",
-                content = "Some content",
-                url = "https://example.com"
+        val webResults =
+            listOf(
+                WebSearchEntry(
+                    title = "Any content",
+                    content = "Some content",
+                    url = "https://example.com",
+                ),
             )
-        )
 
         whenever(miniMaxClient.validateOutput(org.mockito.kotlin.any(), org.mockito.kotlin.any()))
             .thenThrow(RuntimeException("API error"))

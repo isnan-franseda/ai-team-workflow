@@ -12,29 +12,33 @@ private val logger = KotlinLogging.logger {}
 
 data class ParsedDocument(
     val text: String,
-    val metadata: Map<String, String>
+    val metadata: Map<String, String>,
 )
 
 @Component
 class DocumentParser {
-
-    fun parse(file: MultipartFile, docType: String): ParsedDocument {
+    fun parse(
+        file: MultipartFile,
+        docType: String,
+    ): ParsedDocument {
         val bytes = file.bytes
         val filename = file.originalFilename ?: "unknown"
         val extension = filename.substringAfterLast('.').lowercase()
 
-        val text = when (extension) {
-            "pdf" -> parsePdf(bytes)
-            "docx", "doc" -> parseDocx(bytes)
-            "txt" -> String(bytes, Charsets.UTF_8)
-            else -> throw IllegalArgumentException("Unsupported file type: $extension. Supported: pdf, docx, txt")
-        }
+        val text =
+            when (extension) {
+                "pdf" -> parsePdf(bytes)
+                "docx", "doc" -> parseDocx(bytes)
+                "txt" -> String(bytes, Charsets.UTF_8)
+                else -> throw IllegalArgumentException("Unsupported file type: $extension. Supported: pdf, docx, txt")
+            }
 
-        val metadata = mapOf(
-            "filename" to filename,
-            "docType" to docType,
-            "fileSizeBytes" to bytes.size.toString()
-        )
+        val metadata =
+            mapOf(
+                "filename" to filename,
+                "docType" to docType,
+                "fileSizeBytes" to bytes.size.toString(),
+            )
 
         logger.info { "Parsed document '$filename': ${text.length} chars, type=$docType" }
         return ParsedDocument(text = text, metadata = metadata)

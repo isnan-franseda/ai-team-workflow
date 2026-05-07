@@ -1,7 +1,7 @@
 package com.kreditpintar.chatbot.ingestion
 
-import com.kreditpintar.chatbot.config.MiniMaxClient
 import com.kreditpintar.chatbot.config.ChatbotProperties
+import com.kreditpintar.chatbot.config.MiniMaxClient
 import com.kreditpintar.chatbot.domain.Chunk
 import com.kreditpintar.chatbot.domain.ChunkRepository
 import com.kreditpintar.chatbot.domain.Document
@@ -19,7 +19,7 @@ data class IngestionResult(
     val chunksCreated: Int,
     val tokensUsed: Int,
     val skipped: Boolean,
-    val durationMs: Long
+    val durationMs: Long,
 )
 
 @Service
@@ -27,14 +27,14 @@ class EmbeddingService(
     private val miniMaxClient: MiniMaxClient,
     private val documentRepository: DocumentRepository,
     private val chunkRepository: ChunkRepository,
-    private val properties: ChatbotProperties
+    private val properties: ChatbotProperties,
 ) {
     @Transactional
     fun ingestDocument(
         source: String,
         docType: String,
         fileHash: String,
-        chunks: List<TextChunk>
+        chunks: List<TextChunk>,
     ): IngestionResult {
         val startTime = System.currentTimeMillis()
 
@@ -47,16 +47,17 @@ class EmbeddingService(
                 chunksCreated = 0,
                 tokensUsed = 0,
                 skipped = true,
-                durationMs = System.currentTimeMillis() - startTime
+                durationMs = System.currentTimeMillis() - startTime,
             )
         }
 
         // Create document record
-        val document = Document(
-            source = source,
-            docType = docType,
-            fileHash = fileHash
-        )
+        val document =
+            Document(
+                source = source,
+                docType = docType,
+                fileHash = fileHash,
+            )
         documentRepository.save(document)
 
         // Embed chunks in batches
@@ -74,13 +75,14 @@ class EmbeddingService(
                 val textChunk = batch[i]
                 val embeddingResult = embeddingResults[i]
 
-                val chunkEntity = Chunk(
-                    docId = document.id,
-                    chunkText = textChunk.text,
-                    chunkIndex = textChunk.index,
-                    tokenCount = textChunk.tokenCount,
-                    embedding = com.pgvector.PGvector(embeddingResult.embedding.toFloatArray())
-                )
+                val chunkEntity =
+                    Chunk(
+                        docId = document.id,
+                        chunkText = textChunk.text,
+                        chunkIndex = textChunk.index,
+                        tokenCount = textChunk.tokenCount,
+                        embedding = com.pgvector.PGvector(embeddingResult.embedding.toFloatArray()),
+                    )
                 chunkRepository.save(chunkEntity)
             }
         }
@@ -93,7 +95,7 @@ class EmbeddingService(
             chunksCreated = chunks.size,
             tokensUsed = totalTokensUsed,
             skipped = false,
-            durationMs = durationMs
+            durationMs = durationMs,
         )
     }
 

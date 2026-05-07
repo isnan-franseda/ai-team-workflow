@@ -19,7 +19,6 @@ import java.util.Optional
 import java.util.UUID
 
 class EmbeddingServiceTest {
-
     private lateinit var miniMaxClient: MiniMaxClient
     private lateinit var documentRepository: DocumentRepository
     private lateinit var chunkRepository: ChunkRepository
@@ -31,20 +30,22 @@ class EmbeddingServiceTest {
         miniMaxClient = mock()
         documentRepository = mock()
         chunkRepository = mock()
-        properties = ChatbotProperties().apply {
-            ingestion.batchSize = 10
-        }
+        properties =
+            ChatbotProperties().apply {
+                ingestion.batchSize = 10
+            }
         embeddingService = EmbeddingService(miniMaxClient, documentRepository, chunkRepository, properties)
     }
 
     @Test
     fun `ingest skips when file hash already exists`() {
-        val existingDoc = Document(
-            id = UUID.randomUUID(),
-            source = "existing.txt",
-            docType = "FAQ",
-            fileHash = "existinghash"
-        )
+        val existingDoc =
+            Document(
+                id = UUID.randomUUID(),
+                source = "existing.txt",
+                docType = "FAQ",
+                fileHash = "existinghash",
+            )
         whenever(documentRepository.existsByFileHash("existinghash")).thenReturn(true)
         whenever(documentRepository.findByFileHash("existinghash")).thenReturn(Optional.of(existingDoc))
 
@@ -63,13 +64,14 @@ class EmbeddingServiceTest {
 
         val embedding = List(1536) { 0.1f }
         whenever(miniMaxClient.embed(any())).thenReturn(
-            listOf(EmbeddingResult(embedding = embedding, tokensUsed = 100))
+            listOf(EmbeddingResult(embedding = embedding, tokensUsed = 100)),
         )
 
-        val chunks = listOf(
-            TextChunk(text = "First chunk of text.", index = 0, tokenCount = 5),
-            TextChunk(text = "Second chunk of text.", index = 1, tokenCount = 5)
-        )
+        val chunks =
+            listOf(
+                TextChunk(text = "First chunk of text.", index = 0, tokenCount = 5),
+                TextChunk(text = "Second chunk of text.", index = 1, tokenCount = 5),
+            )
 
         val result = embeddingService.ingestDocument("new.txt", "FAQ", "newhash", chunks)
 

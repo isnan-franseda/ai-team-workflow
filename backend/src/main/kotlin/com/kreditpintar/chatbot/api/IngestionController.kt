@@ -22,14 +22,14 @@ data class IngestionResponse(
     val chunksCreated: Int,
     val tokensUsed: Int,
     val skipped: Boolean,
-    val durationMs: Long
+    val durationMs: Long,
 )
 
 data class BatchIngestionResponse(
     val results: List<IngestionResponse>,
     val totalChunksCreated: Int,
     val totalTokensUsed: Int,
-    val totalDurationMs: Long
+    val totalDurationMs: Long,
 )
 
 @RestController
@@ -38,13 +38,13 @@ class IngestionController(
     private val documentParser: DocumentParser,
     private val textChunker: TextChunker,
     private val embeddingService: EmbeddingService,
-    private val properties: ChatbotProperties
+    private val properties: ChatbotProperties,
 ) {
     @PostMapping("/ingest")
     fun ingestDocument(
         @RequestParam file: MultipartFile,
         @RequestParam docType: String,
-        @RequestHeader("X-Admin-Key") adminKey: String
+        @RequestHeader("X-Admin-Key") adminKey: String,
     ): ResponseEntity<Any> {
         if (adminKey != properties.adminKey) {
             logger.warn { "Invalid admin key attempted for ingestion" }
@@ -65,12 +65,13 @@ class IngestionController(
             val parsed = documentParser.parse(file, docType)
             val chunks = textChunker.chunk(parsed.text)
 
-            val result = embeddingService.ingestDocument(
-                source = parsed.metadata["filename"] ?: "unknown",
-                docType = docType,
-                fileHash = fileHash,
-                chunks = chunks
-            )
+            val result =
+                embeddingService.ingestDocument(
+                    source = parsed.metadata["filename"] ?: "unknown",
+                    docType = docType,
+                    fileHash = fileHash,
+                    chunks = chunks,
+                )
 
             return ResponseEntity.ok(mapIngestionResult(result))
         } catch (e: IllegalArgumentException) {
@@ -86,7 +87,7 @@ class IngestionController(
     fun ingestBatch(
         @RequestParam files: List<MultipartFile>,
         @RequestParam docType: String,
-        @RequestHeader("X-Admin-Key") adminKey: String
+        @RequestHeader("X-Admin-Key") adminKey: String,
     ): ResponseEntity<Any> {
         if (adminKey != properties.adminKey) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -112,12 +113,13 @@ class IngestionController(
                 val parsed = documentParser.parse(file, docType)
                 val chunks = textChunker.chunk(parsed.text)
 
-                val result = embeddingService.ingestDocument(
-                    source = parsed.metadata["filename"] ?: "unknown",
-                    docType = docType,
-                    fileHash = fileHash,
-                    chunks = chunks
-                )
+                val result =
+                    embeddingService.ingestDocument(
+                        source = parsed.metadata["filename"] ?: "unknown",
+                        docType = docType,
+                        fileHash = fileHash,
+                        chunks = chunks,
+                    )
 
                 results.add(mapIngestionResult(result))
                 totalChunks += result.chunksCreated
@@ -130,8 +132,8 @@ class IngestionController(
                         chunksCreated = 0,
                         tokensUsed = 0,
                         skipped = false,
-                        durationMs = 0
-                    )
+                        durationMs = 0,
+                    ),
                 )
             }
         }
@@ -141,8 +143,8 @@ class IngestionController(
                 results = results,
                 totalChunksCreated = totalChunks,
                 totalTokensUsed = totalTokens,
-                totalDurationMs = System.currentTimeMillis() - startTime
-            )
+                totalDurationMs = System.currentTimeMillis() - startTime,
+            ),
         )
     }
 
@@ -152,7 +154,7 @@ class IngestionController(
             chunksCreated = result.chunksCreated,
             tokensUsed = result.tokensUsed,
             skipped = result.skipped,
-            durationMs = result.durationMs
+            durationMs = result.durationMs,
         )
     }
 }

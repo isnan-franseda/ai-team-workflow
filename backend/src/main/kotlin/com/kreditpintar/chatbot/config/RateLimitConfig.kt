@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 @Configuration
 class RateLimitConfig(
-    private val properties: ChatbotProperties
+    private val properties: ChatbotProperties,
 ) {
     private val buckets = ConcurrentHashMap<String, Bucket>()
 
@@ -17,10 +17,11 @@ class RateLimitConfig(
     }
 
     private fun createBucket(): Bucket {
-        val bandwidth = Bandwidth.builder()
-            .capacity(properties.rateLimit.requestsPerMinute.toLong())
-            .refillGreedy(properties.rateLimit.requestsPerMinute.toLong(), Duration.ofMinutes(1))
-            .build()
+        val bandwidth =
+            Bandwidth.builder()
+                .capacity(properties.rateLimit.requestsPerMinute.toLong())
+                .refillGreedy(properties.rateLimit.requestsPerMinute.toLong(), Duration.ofMinutes(1))
+                .build()
         return Bucket.builder()
             .addLimit(bandwidth)
             .build()

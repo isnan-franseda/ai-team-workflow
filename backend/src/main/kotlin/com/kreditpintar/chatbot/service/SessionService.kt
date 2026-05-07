@@ -16,7 +16,7 @@ private val logger = KotlinLogging.logger {}
 class SessionService(
     private val sessionRepository: SessionRepository,
     private val messageRepository: MessageRepository,
-    private val chatbotProperties: com.kreditpintar.chatbot.config.ChatbotProperties
+    private val chatbotProperties: com.kreditpintar.chatbot.config.ChatbotProperties,
 ) {
     @Transactional
     fun createSession(): Session {
@@ -31,12 +31,17 @@ class SessionService(
     }
 
     @Transactional
-    fun saveMessage(sessionId: UUID, role: String, content: String): Message {
-        val message = Message(
-            sessionId = sessionId,
-            role = role,
-            content = content
-        )
+    fun saveMessage(
+        sessionId: UUID,
+        role: String,
+        content: String,
+    ): Message {
+        val message =
+            Message(
+                sessionId = sessionId,
+                role = role,
+                content = content,
+            )
         val saved = messageRepository.save(message)
 
         // Update last_active_at
@@ -48,7 +53,10 @@ class SessionService(
         return saved
     }
 
-    fun getConversationHistory(sessionId: UUID, limit: Int? = null): List<Message> {
+    fun getConversationHistory(
+        sessionId: UUID,
+        limit: Int? = null,
+    ): List<Message> {
         val allMessages = messageRepository.findBySessionIdOrderByCreatedAtAsc(sessionId)
         val maxMessages = limit ?: chatbotProperties.context.maxHistoryMessages
         return allMessages.takeLast(maxMessages)

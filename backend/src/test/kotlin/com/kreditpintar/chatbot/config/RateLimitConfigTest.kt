@@ -1,21 +1,21 @@
 package com.kreditpintar.chatbot.config
 
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 class RateLimitConfigTest {
-
     private lateinit var properties: ChatbotProperties
     private lateinit var rateLimitConfig: RateLimitConfig
 
     @BeforeEach
     fun setUp() {
-        properties = ChatbotProperties().apply {
-            rateLimit.requestsPerMinute = 5 // Low limit for testing
-        }
+        properties =
+            ChatbotProperties().apply {
+                rateLimit.requestsPerMinute = 5 // Low limit for testing
+            }
         rateLimitConfig = RateLimitConfig(properties)
     }
 

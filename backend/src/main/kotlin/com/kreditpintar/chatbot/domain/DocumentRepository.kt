@@ -8,5 +8,6 @@ import java.util.UUID
 @Repository
 interface DocumentRepository : JpaRepository<Document, UUID> {
     fun findByFileHash(fileHash: String): Optional<Document>
+
     fun existsByFileHash(fileHash: String): Boolean
 }

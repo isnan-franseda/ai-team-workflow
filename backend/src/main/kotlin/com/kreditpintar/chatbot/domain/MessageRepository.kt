@@ -7,5 +7,6 @@ import java.util.UUID
 @Repository
 interface MessageRepository : JpaRepository<Message, UUID> {
     fun findBySessionIdOrderByCreatedAtAsc(sessionId: UUID): List<Message>
+
     fun countBySessionId(sessionId: UUID): Int
 }

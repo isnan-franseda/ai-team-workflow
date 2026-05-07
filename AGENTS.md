@@ -5,10 +5,10 @@ knowledge (RAG via pgvector) with live web search, filtered through KP's
 lending values layer. Built on Spring Boot 3 / Kotlin + MiniMax API.
 
 ## Commands
-- `./gradlew build` — compile + all checks
-- `./gradlew test` — unit + integration tests (REQUIRED before any PR)
-- `./gradlew bootRun` — start local server (port 8080)
-- `./gradlew ktlintCheck` — lint (Kotlin)
+- `cd backend && ./gradlew build` — compile + all checks
+- `cd backend && ./gradlew test` — unit + integration tests (REQUIRED before any PR)
+- `cd backend && ./gradlew bootRun` — start local server (port 8080)
+- `cd backend && ./gradlew ktlintCheck` — lint (Kotlin)
 - `make dev-up` — start pgvector + local DB (Docker)
 - `make dev-down` — stop local DB
 - `make dev-reset` — wipe and recreate local DB

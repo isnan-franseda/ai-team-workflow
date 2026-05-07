@@ -1,0 +1,62 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: kp-ai-chatbot
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/kp_chatbot
+    username: kp_chatbot
+    password: kp_chatbot_dev
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+minimax:
+  api:
+    base-url: https://api.minimax.chat
+    key: ${MINIMAX_API_KEY:}
+    chat-model: MiniMax-Text-01
+    embedding-model: embo-01
+    connect-timeout-seconds: 10
+    read-timeout-seconds: 60
+    max-retries: 3
+
+chatbot:
+  rate-limit:
+    requests-per-minute: 20
+  context:
+    max-history-messages: 10
+    doc-weight-percent: 60
+    web-weight-percent: 30
+    max-context-chars: 3000
+    doc-max-chars: 1800
+    web-max-chars: 900
+  search:
+    top-k: 5
+    similarity-threshold: 0.7
+    max-web-results: 3
+  chunking:
+    chunk-size: 400
+    overlap: 50
+  ingestion:
+    batch-size: 10
+  fallback-message: "Maaf, saya tidak dapat menjawab pertanyaan Anda saat ini. Silakan hubungi layanan pelanggan Kredit Pintar untuk bantuan lebih lanjut."
+  admin-key: ${ADMIN_API_KEY:dev-admin-key}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

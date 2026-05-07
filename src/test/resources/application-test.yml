@@ -1,0 +1,24 @@
+spring:
+  datasource:
+    url: jdbc:tc:postgresql:16:///kp_chatbot_test
+    username: test
+    password: test
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+
+  flyway:
+    enabled: false
+
+minimax:
+  api:
+    base-url: http://localhost:0
+    key: test-key
+    chat-model: MiniMax-Text-01
+    embedding-model: embo-01
+
+chatbot:
+  admin-key: test-admin-key
+  rate-limit:
+    requests-per-minute: 20

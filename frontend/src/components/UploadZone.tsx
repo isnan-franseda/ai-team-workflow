@@ -68,7 +68,7 @@ export const UploadZone = ({
       onDragOver={handleDrag}
       onDrop={handleDrop}
       className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition ${
-        dragActive ? "border-blue-600 bg-blue-50" : "border-gray-300"
+        dragActive ? "border-kp-green bg-kp-green-light" : "border-gray-300"
       } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
     >
       <input

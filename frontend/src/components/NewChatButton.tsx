@@ -10,7 +10,7 @@ export const NewChatButton: React.FC<NewChatButtonProps> = ({ onClick, disabled 
     <button
       onClick={onClick}
       disabled={disabled}
-      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      className="flex items-center gap-2 px-4 py-2 bg-kp-green text-white rounded-lg hover:bg-kp-green-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       aria-label="Mulai obrolan baru"
     >
       <svg

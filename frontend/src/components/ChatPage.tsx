@@ -93,10 +93,10 @@ export const ChatPage: React.FC = () => {
   }, [clearSession, createSession]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] bg-gray-50">
+    <div className="flex flex-col h-[calc(100vh-4rem)] bg-bg-light">
       {/* Page Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-4">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">Chat dengan Kredit Pintar</h2>
             <p className="text-sm text-gray-500">Assisten virtual 24/7 untuk pertanyaan seputar kredit</p>
@@ -117,17 +117,21 @@ export const ChatPage: React.FC = () => {
       )}
 
       {/* Message List */}
-      <MessageList
-        messages={messages}
-        typingIndicatorVisible={isTyping}
-      />
+      <div className="flex-1 overflow-hidden">
+        <MessageList
+          messages={messages}
+          typingIndicatorVisible={isTyping}
+        />
+      </div>
 
       {/* Message Input */}
-      <MessageInput
-        onSendMessage={handleSendMessage}
-        disabled={!sessionId || isLoading}
-        rateLimited={isRateLimited}
-      />
+      <div className="border-t border-gray-200 bg-white">
+        <MessageInput
+          onSendMessage={handleSendMessage}
+          disabled={!sessionId || isLoading}
+          rateLimited={isRateLimited}
+        />
+      </div>
     </div>
   );
 };

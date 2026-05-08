@@ -34,7 +34,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disab
   return (
     <form
       onSubmit={handleSubmit}
-      className="border-t border-gray-200 bg-white px-4 py-3"
+      className="bg-white px-4 py-3"
     >
       {rateLimited && (
         <div
@@ -46,7 +46,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disab
         </div>
       )}
 
-      <div className="flex items-start gap-3">
+      <div className="max-w-4xl mx-auto flex items-start gap-3">
         <div className="flex-1 relative">
           <textarea
             ref={inputRef}
@@ -56,7 +56,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disab
             placeholder="Ketik pesan Anda di sini..."
             disabled={isDisabled}
             rows={1}
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="w-full px-4 py-3 border border-gray-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-kp-green focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
             aria-label="Input pesan chat"
             aria-describedby={rateLimited ? "rate-limit-warning" : undefined}
             style={{ minHeight: "48px", maxHeight: "120px" }}
@@ -66,7 +66,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disab
         <button
           type="submit"
           disabled={isDisabled || !inputValue.trim()}
-          className="shrink-0 p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="shrink-0 p-3 bg-kp-orange text-white rounded-xl hover:bg-kp-orange-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           aria-label="Kirim pesan"
         >
           <svg
@@ -87,7 +87,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disab
         </button>
       </div>
 
-      <p className="mt-1 text-xs text-gray-400" aria-hidden="true">
+      <p className="max-w-4xl mx-auto mt-1 text-xs text-gray-400" aria-hidden="true">
         Tekan Enter untuk mengirim, Shift+Enter untuk baris baru
       </p>
     </form>

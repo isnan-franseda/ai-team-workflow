@@ -80,10 +80,10 @@ export const UploadPage = ({ adminKey, onLogout }: UploadPageProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-bg-light">
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-8 py-6 flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Panel Admin KP</h1>
+          <h1 className="text-3xl font-bold text-text-dark">Panel Admin Kredit Pintar</h1>
           <button
             onClick={onLogout}
             className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
@@ -146,7 +146,7 @@ export const UploadPage = ({ adminKey, onLogout }: UploadPageProps) => {
             <button
               onClick={handleUpload}
               disabled={files.length === 0 || uploading}
-              className="mt-6 w-full bg-blue-600 text-white py-3 rounded hover:bg-blue-700 disabled:opacity-50 font-semibold"
+              className="mt-6 w-full bg-kp-orange text-white py-3 rounded hover:bg-kp-orange-dark disabled:opacity-50 font-semibold"
               aria-label="Tombol Unggah Dokumen"
             >
               {uploading ? "Mengunggah..." : "Unggah Dokumen"}

@@ -38,7 +38,7 @@ export const DocumentList = ({ documents, loading }: DocumentListProps) => {
             <tr key={doc.document_id} className="border-b hover:bg-gray-50">
               <td className="px-6 py-4 text-sm">{doc.filename}</td>
               <td className="px-6 py-4 text-sm">
-                <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                <span className="px-3 py-1 bg-kp-green-light text-kp-green-dark rounded-full text-xs">
                   {doc.doc_type}
                 </span>
               </td>

@@ -5,14 +5,14 @@ export const Layout = () => {
   const isAdminRoute = location.pathname.startsWith("/admin");
 
   return (
-    <nav className="bg-white border-b border-gray-200 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+    <nav className="bg-white border-b border-gray-200 shadow-sm px-4">
+      <div className="max-w-4xl mx-auto h-16 flex items-center justify-between">
         <Link
           to="/"
           className="flex items-center gap-3 hover:opacity-80"
           aria-label="Beranda Chatbot Kredit Pintar"
         >
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+          <div className="w-10 h-10 bg-kp-green rounded-xl flex items-center justify-center">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="w-6 h-6 text-white"
@@ -37,19 +37,19 @@ export const Layout = () => {
             <>
               <Link
                 to="/"
-                className="px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                className="px-4 py-2 text-gray-600 hover:text-kp-green hover:bg-kp-green-light rounded-lg transition-colors"
                 aria-label="Buka halaman chat pengguna"
               >
                 Chat
               </Link>
-              <span className="px-3 py-1 bg-purple-100 text-purple-800 text-sm font-medium rounded-full">
+              <span className="px-3 py-1 bg-kp-orange text-white text-sm font-medium rounded-full">
                 Admin
               </span>
             </>
           ) : (
             <Link
               to="/admin"
-              className="px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              className="px-4 py-2 text-white bg-kp-orange hover:bg-kp-orange-dark rounded-lg transition-colors"
               aria-label="Buka panel admin"
             >
               Panel Admin

@@ -1,1 +1,14 @@
 @import "tailwindcss";
+
+/* Kredit Pintar Brand Colors */
+@theme {
+  --color-kp-green: #00A86B;
+  --color-kp-green-dark: #008B57;
+  --color-kp-green-light: #E8F5F0;
+  --color-kp-orange: #FF6B35;
+  --color-kp-orange-dark: #E55A2B;
+  --color-text-dark: #1A1A1A;
+  --color-text-gray: #666666;
+  --color-bg-main: #FFFFFF;
+  --color-bg-light: #F5F7FA;
+}

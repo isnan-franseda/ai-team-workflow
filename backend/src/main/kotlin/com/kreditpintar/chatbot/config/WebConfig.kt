@@ -11,8 +11,9 @@ class WebConfig {
     fun webMvcConfigurer(): WebMvcConfigurer {
         return object : WebMvcConfigurer {
             override fun addCorsMappings(registry: CorsRegistry) {
-                registry.addMapping("/chat/**")
-                    .allowedMethods("GET", "POST")
+                registry.addMapping("/**")
+                    .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                    .allowedHeaders("*")
                     .allowedOrigins("*")
             }
         }

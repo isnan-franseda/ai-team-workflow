@@ -6,9 +6,9 @@ spring:
     name: kp-ai-chatbot
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/kp_chatbot
-    username: kp_chatbot
-    password: kp_chatbot_dev
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:kp_chatbot}
+    username: ${DB_USERNAME:kp_chatbot}
+    password: ${DB_PASSWORD:kp_chatbot_dev}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -24,28 +24,35 @@ spring:
     locations: classpath:db/migration
 
 minimax:
-  api:
-    base-url: https://api.minimax.chat
-    key: ${MINIMAX_API_KEY:}
-    chat-model: MiniMax-Text-01
-    embedding-model: embo-01
-    connect-timeout-seconds: 10
-    read-timeout-seconds: 60
-    max-retries: 3
+  chat:
+    base-url: ${MINIMAX_CHAT_BASE_URL:http://localhost:8317}
+    key: ${MINIMAX_CHAT_API_KEY:}
+    model: ${MINIMAX_CHAT_MODEL:minimax-m2.7}
+    connect-timeout-seconds: ${MINIMAX_CHAT_CONNECT_TIMEOUT_SECONDS:10}
+    read-timeout-seconds: ${MINIMAX_CHAT_READ_TIMEOUT_SECONDS:60}
+    max-retries: ${MINIMAX_CHAT_MAX_RETRIES:3}
+
+jina:
+  base-url: ${JINA_BASE_URL:https://api.jina.ai}
+  key: ${JINA_API_KEY:}
+  model: ${JINA_EMBEDDING_MODEL:jina-embeddings-v3}
+  connect-timeout-seconds: ${JINA_CONNECT_TIMEOUT_SECONDS:10}
+  read-timeout-seconds: ${JINA_READ_TIMEOUT_SECONDS:60}
+  max-retries: ${JINA_MAX_RETRIES:3}
 
 chatbot:
   rate-limit:
     requests-per-minute: 20
   context:
-    max-history-messages: 10
+    max-history-messages: ${MAX_HISTORY_MESSAGES:5}
     doc-weight-percent: 60
     web-weight-percent: 30
-    max-context-chars: 3000
-    doc-max-chars: 1800
-    web-max-chars: 900
+    max-context-chars: ${MAX_CONTEXT_CHARS:2000}
+    doc-max-chars: ${DOC_MAX_CHARS:1200}
+    web-max-chars: ${WEB_MAX_CHARS:600}
   search:
     top-k: 5
-    similarity-threshold: 0.7
+    similarity-threshold: ${SIMILARITY_THRESHOLD:0.3}
     max-web-results: 3
   chunking:
     chunk-size: 400

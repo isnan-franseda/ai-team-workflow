@@ -22,11 +22,11 @@ interface ChunkRepository : JpaRepository<Chunk, UUID> {
         nativeQuery = true,
         value = """
             SELECT c.id, c.doc_id, c.chunk_text, c.chunk_index, d.source, d.doc_type,
-                   1 - (c.embedding <=> :queryVector) AS similarity
+                   1 - (c.embedding <=> CAST(:queryVector AS vector)) AS similarity
             FROM chunks c
             JOIN documents d ON c.doc_id = d.id
             WHERE c.embedding IS NOT NULL
-            ORDER BY c.embedding <=> :queryVector
+            ORDER BY c.embedding <=> CAST(:queryVector AS vector)
             LIMIT :limit
         """,
     )

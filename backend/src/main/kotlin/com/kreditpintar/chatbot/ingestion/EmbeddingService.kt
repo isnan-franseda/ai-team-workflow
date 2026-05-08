@@ -1,7 +1,7 @@
 package com.kreditpintar.chatbot.ingestion
 
 import com.kreditpintar.chatbot.config.ChatbotProperties
-import com.kreditpintar.chatbot.config.MiniMaxClient
+import com.kreditpintar.chatbot.config.JinaClient
 import com.kreditpintar.chatbot.domain.Chunk
 import com.kreditpintar.chatbot.domain.ChunkRepository
 import com.kreditpintar.chatbot.domain.Document
@@ -24,7 +24,7 @@ data class IngestionResult(
 
 @Service
 class EmbeddingService(
-    private val miniMaxClient: MiniMaxClient,
+    private val jinaClient: JinaClient,
     private val documentRepository: DocumentRepository,
     private val chunkRepository: ChunkRepository,
     private val properties: ChatbotProperties,
@@ -38,7 +38,6 @@ class EmbeddingService(
     ): IngestionResult {
         val startTime = System.currentTimeMillis()
 
-        // Check for idempotency by file hash
         if (documentRepository.existsByFileHash(fileHash)) {
             val existingDoc = documentRepository.findByFileHash(fileHash).orElse(null)
             logger.info { "Document '$source' already ingested (id=${existingDoc?.id}), skipping" }
@@ -51,7 +50,6 @@ class EmbeddingService(
             )
         }
 
-        // Create document record
         val document =
             Document(
                 source = source,
@@ -60,7 +58,6 @@ class EmbeddingService(
             )
         documentRepository.save(document)
 
-        // Embed chunks in batches
         var totalTokensUsed = 0
         val batchSize = properties.ingestion.batchSize
 
@@ -68,7 +65,7 @@ class EmbeddingService(
             val batch = chunks.subList(batchStart, minOf(batchStart + batchSize, chunks.size))
             val texts = batch.map { it.text }
 
-            val embeddingResults = miniMaxClient.embed(texts)
+            val embeddingResults = jinaClient.embed(texts)
             totalTokensUsed += embeddingResults.sumOf { it.tokensUsed }
 
             for (i in batch.indices) {

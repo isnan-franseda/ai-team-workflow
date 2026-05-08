@@ -1,11 +1,13 @@
 package com.kreditpintar.chatbot.domain
 
+import com.kreditpintar.chatbot.config.PGvectorUserType
 import com.pgvector.PGvector
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import org.hibernate.annotations.CreationTimestamp
+import org.hibernate.annotations.Type
 import java.time.Instant
 import java.util.UUID
 
@@ -22,7 +24,8 @@ class Chunk(
     val chunkIndex: Int,
     @Column(name = "token_count", nullable = false)
     val tokenCount: Int = 0,
-    @Column(name = "embedding", columnDefinition = "vector(1536)")
+    @Type(PGvectorUserType::class)
+    @Column(name = "embedding", columnDefinition = "vector(1024)")
     var embedding: PGvector? = null,
     @CreationTimestamp
     @Column(name = "created_at", nullable = false)

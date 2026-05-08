@@ -14,6 +14,7 @@ import mu.KotlinLogging
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.util.UUID
+import java.util.concurrent.CompletableFuture
 
 private val logger = KotlinLogging.logger {}
 
@@ -47,21 +48,21 @@ class ChatService(
     ): ChatMessageResponse {
         val startTime = System.currentTimeMillis()
 
-        // Step 1: Get conversation history
-        val history = sessionService.getConversationHistory(sessionId)
-        val historyPairs =
-            history.map { msg ->
-                Pair(msg.role.lowercase(), msg.content)
-            }
-
-        // Step 2: Vector similarity search on document knowledge
-        val docResults: List<VectorSearchResult> =
+        // Step 1 + 2a: Fetch history and embed query in parallel
+        val historyFuture = CompletableFuture.supplyAsync {
+            sessionService.getConversationHistory(sessionId)
+        }
+        val docResultsFuture = CompletableFuture.supplyAsync {
             try {
                 vectorSearchService.search(userMessage)
             } catch (e: Exception) {
                 logger.error(e) { "Vector search failed for session=$sessionId" }
-                emptyList()
+                emptyList<VectorSearchResult>()
             }
+        }
+
+        val historyPairs = historyFuture.get().map { Pair(it.role.lowercase(), it.content) }
+        val docResults: List<VectorSearchResult> = docResultsFuture.get()
 
         // Step 3: Web search (fallback or supplement when docs are sparse)
         val webResults: List<WebSearchEntry> =

@@ -15,11 +15,6 @@ import java.util.concurrent.TimeUnit
 
 private val logger = KotlinLogging.logger {}
 
-data class EmbeddingResult(
-    val embedding: List<Float>,
-    val tokensUsed: Int,
-)
-
 data class ChatResult(
     val content: String,
     val webSearchResults: List<WebSearchResult> = emptyList(),
@@ -36,37 +31,13 @@ class MiniMaxClient(
     private val properties: MiniMaxProperties,
     private val objectMapper: ObjectMapper,
 ) {
-    private val client: OkHttpClient =
+    private val chatClient: OkHttpClient =
         OkHttpClient.Builder()
-            .connectTimeout(properties.connectTimeoutSeconds.toLong(), TimeUnit.SECONDS)
-            .readTimeout(properties.readTimeoutSeconds.toLong(), TimeUnit.SECONDS)
+            .connectTimeout(properties.chat.connectTimeoutSeconds.toLong(), TimeUnit.SECONDS)
+            .readTimeout(properties.chat.readTimeoutSeconds.toLong(), TimeUnit.SECONDS)
             .build()
 
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
-
-    fun embed(texts: List<String>): List<EmbeddingResult> {
-        val requestJson =
-            objectMapper.createObjectNode().apply {
-                put("model", properties.embeddingModel)
-                putArray("texts").apply {
-                    texts.forEach { add(it) }
-                }
-            }
-
-        val response = post("/v1/embeddings", requestJson)
-        val dataNode = response.path("data")
-
-        return texts.indices.map { i ->
-            val embeddingNode = dataNode[i].path("embedding")
-            val embedding = embeddingNode.map { it.floatValue() }
-            val usageTokens = response.path("usage").path("total_tokens").intValue()
-            EmbeddingResult(
-                embedding = embedding,
-                // Count tokens once
-                tokensUsed = if (i == 0) usageTokens else 0,
-            )
-        }
-    }
 
     fun chat(
         systemPrompt: String,
@@ -95,7 +66,7 @@ class MiniMaxClient(
 
         val requestJson =
             objectMapper.createObjectNode().apply {
-                put("model", properties.chatModel)
+                put("model", properties.chat.model)
                 set<ArrayNode>("messages", messages)
             }
 
@@ -138,7 +109,7 @@ class MiniMaxClient(
 
         val requestJson =
             objectMapper.createObjectNode().apply {
-                put("model", properties.chatModel)
+                put("model", properties.chat.model)
                 set<ArrayNode>("messages", messages)
                 set<ArrayNode>("tools", tools)
             }
@@ -183,7 +154,7 @@ class MiniMaxClient(
 
         val requestJson =
             objectMapper.createObjectNode().apply {
-                put("model", properties.chatModel)
+                put("model", properties.chat.model)
                 set<ArrayNode>("messages", messages)
                 put("temperature", 0.0)
             }
@@ -198,22 +169,22 @@ class MiniMaxClient(
     ): JsonNode {
         var lastException: IOException? = null
 
-        for (attempt in 1..properties.maxRetries) {
+        for (attempt in 1..properties.chat.maxRetries) {
             try {
                 val request =
                     Request.Builder()
-                        .url("${properties.baseUrl}$path")
-                        .header("Authorization", "Bearer ${properties.key}")
+                        .url("${properties.chat.baseUrl}$path")
+                        .header("Authorization", "Bearer ${properties.chat.key}")
                         .header("Content-Type", "application/json")
                         .post(body.toString().toRequestBody(jsonMediaType))
                         .build()
 
                 val result: JsonNode? =
-                    client.newCall(request).execute().use { response ->
+                    chatClient.newCall(request).execute().use { response ->
                         if (!response.isSuccessful) {
                             val errorBody = response.body?.string() ?: "Unknown error"
                             logger.warn { "MiniMax API error (attempt $attempt): ${response.code} - $errorBody" }
-                            if (attempt == properties.maxRetries) {
+                            if (attempt == properties.chat.maxRetries) {
                                 throw IOException("MiniMax API returned ${response.code}: $errorBody")
                             }
                             null
@@ -231,6 +202,6 @@ class MiniMaxClient(
             }
         }
 
-        throw lastException ?: IOException("Failed to call MiniMax API after ${properties.maxRetries} attempts")
+        throw lastException ?: IOException("Failed to call MiniMax API after ${properties.chat.maxRetries} attempts")
     }
 }

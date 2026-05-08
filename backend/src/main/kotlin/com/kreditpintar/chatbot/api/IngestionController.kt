@@ -67,7 +67,7 @@ class IngestionController(
     @PostMapping("/ingest")
     fun ingestDocument(
         @RequestParam file: MultipartFile,
-        @RequestParam docType: String,
+        @RequestParam(name = "doc_type") docType: String,
         @RequestHeader("X-Admin-Key") adminKey: String,
     ): ResponseEntity<Any> {
         if (adminKey != properties.adminKey) {

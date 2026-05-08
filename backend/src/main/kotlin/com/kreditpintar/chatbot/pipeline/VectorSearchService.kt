@@ -1,7 +1,7 @@
 package com.kreditpintar.chatbot.pipeline
 
 import com.kreditpintar.chatbot.config.ChatbotProperties
-import com.kreditpintar.chatbot.config.MiniMaxClient
+import com.kreditpintar.chatbot.config.JinaClient
 import com.kreditpintar.chatbot.domain.ChunkRepository
 import mu.KotlinLogging
 import org.springframework.stereotype.Service
@@ -20,13 +20,13 @@ data class VectorSearchResult(
 
 @Service
 class VectorSearchService(
-    private val miniMaxClient: MiniMaxClient,
+    private val jinaClient: JinaClient,
     private val chunkRepository: ChunkRepository,
     private val properties: ChatbotProperties,
 ) {
     fun search(query: String): List<VectorSearchResult> {
         val queryEmbedding =
-            miniMaxClient.embed(listOf(query)).firstOrNull()
+            jinaClient.embed(listOf(query)).firstOrNull()
                 ?: run {
                     logger.warn { "Failed to embed query: $query" }
                     return emptyList()

@@ -1,0 +1,146 @@
+import { useState, useEffect } from "react";
+import { UploadZone } from "./UploadZone";
+import { DocumentList } from "./DocumentList";
+import { apiClient } from "../api/apiClient";
+import type { UploadResult, DocumentMetadata } from "../types";
+
+export const AdminUploadPage = () => {
+  const [files, setFiles] = useState<File[]>([]);
+  const [docTypes, setDocTypes] = useState<string[]>([]);
+  const [documents, setDocuments] = useState<DocumentMetadata[]>([]);
+  const [loadingDocs, setLoadingDocs] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [results, setResults] = useState<UploadResult[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchDocuments = async () => {
+      const stored = sessionStorage.getItem("admin_key");
+      if (!stored || cancelled) return;
+
+      try {
+        const docs = await apiClient.getDocuments(stored);
+        if (!cancelled) {
+          setDocuments(docs);
+        }
+      } catch {
+        // Handle error silently
+      } finally {
+        if (!cancelled) {
+          setLoadingDocs(false);
+        }
+      }
+    };
+
+    const timeoutId = setTimeout(() => {
+      fetchDocuments();
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, []);
+
+  const handleUpload = async () => {
+    const stored = sessionStorage.getItem("admin_key");
+    if (!stored) return;
+
+    if (files.length === 0 || docTypes.length === 0) {
+      alert("Pilih file dan tentukan tipe dokumen");
+      return;
+    }
+
+    setUploading(true);
+    setError(null);
+    setResults([]);
+
+    try {
+      let uploadResults: UploadResult[];
+      if (files.length === 1) {
+        uploadResults = [await apiClient.uploadSingle(files[0], docTypes[0], stored)];
+      } else {
+        uploadResults = await apiClient.uploadBatch(files, docTypes, stored);
+      }
+      setResults(uploadResults);
+      setFiles([]);
+      setDocTypes([]);
+      const docs = await apiClient.getDocuments(stored);
+      setDocuments(docs);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Terjadi kesalahan saat mengunggah");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto px-8 py-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div>
+          <h2 className="text-2xl font-bold mb-6">Unggah Dokumen Baru</h2>
+          <UploadZone
+            onFilesSelected={setFiles}
+            onDocTypesChanged={setDocTypes}
+            files={files}
+            docTypes={docTypes}
+            disabled={uploading}
+          />
+
+          {error && (
+            <div className="mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded" role="alert">
+              {error}
+            </div>
+          )}
+
+          {results.length > 0 && (
+            <div className="mt-6 space-y-4">
+              <h3 className="font-semibold">Hasil Unggahan:</h3>
+              {results.map((result, idx) => (
+                <div
+                  key={idx}
+                  className={`p-4 rounded border ${
+                    result.status === "SUCCESS"
+                      ? "bg-green-50 border-green-200"
+                      : result.status === "SKIPPED"
+                      ? "bg-yellow-50 border-yellow-200"
+                      : "bg-red-50 border-red-200"
+                  }`}
+                >
+                  <div className="font-medium">{result.filename}</div>
+                  <div className="text-sm text-gray-600">
+                    Status: {result.status === "SUCCESS" ? "Berhasil" : result.status}
+                  </div>
+                  {result.chunks_created && (
+                    <div className="text-sm text-gray-600">
+                      Chunk: {result.chunks_created}, Token: {result.tokens_used}
+                    </div>
+                  )}
+                  {result.error_message && (
+                    <div className="text-sm text-red-600 mt-2">{result.error_message}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button
+            onClick={handleUpload}
+            disabled={files.length === 0 || uploading}
+            className="mt-6 w-full bg-blue-600 text-white py-3 rounded hover:bg-blue-700 disabled:opacity-50 font-semibold"
+            aria-label="Tombol unggah dokumen"
+          >
+            {uploading ? "Mengunggah..." : "Unggah Dokumen"}
+          </button>
+        </div>
+
+        <div>
+          <h2 className="text-2xl font-bold mb-6">Dokumen Teringest</h2>
+          <DocumentList documents={documents} loading={loadingDocs} />
+        </div>
+      </div>
+    </div>
+  );
+};

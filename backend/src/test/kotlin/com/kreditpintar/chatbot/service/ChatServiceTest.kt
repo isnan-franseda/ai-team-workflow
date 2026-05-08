@@ -1,18 +1,14 @@
 package com.kreditpintar.chatbot.service
 
+import com.kreditpintar.chatbot.config.ChatClient
 import com.kreditpintar.chatbot.config.ChatResult
 import com.kreditpintar.chatbot.config.ChatbotProperties
-import com.kreditpintar.chatbot.config.MiniMaxClient
 import com.kreditpintar.chatbot.domain.Message
 import com.kreditpintar.chatbot.pipeline.AssembledContext
 import com.kreditpintar.chatbot.pipeline.ContextAssembler
-import com.kreditpintar.chatbot.pipeline.FilteredWebResult
 import com.kreditpintar.chatbot.pipeline.SourceCitation
-import com.kreditpintar.chatbot.pipeline.ValuesFilterService
 import com.kreditpintar.chatbot.pipeline.VectorSearchResult
 import com.kreditpintar.chatbot.pipeline.VectorSearchService
-import com.kreditpintar.chatbot.pipeline.WebSearchEntry
-import com.kreditpintar.chatbot.pipeline.WebSearchService
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -20,14 +16,13 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.whenever
 import java.util.UUID
 
 class ChatServiceTest {
-    private lateinit var miniMaxClient: MiniMaxClient
+    private lateinit var chatClient: ChatClient
     private lateinit var vectorSearchService: VectorSearchService
-    private lateinit var webSearchService: WebSearchService
-    private lateinit var valuesFilterService: ValuesFilterService
     private lateinit var contextAssembler: ContextAssembler
     private lateinit var outputValidatorService: OutputValidatorService
     private lateinit var sessionService: SessionService
@@ -36,10 +31,8 @@ class ChatServiceTest {
 
     @BeforeEach
     fun setUp() {
-        miniMaxClient = mock()
+        chatClient = mock()
         vectorSearchService = mock()
-        webSearchService = mock()
-        valuesFilterService = mock()
         contextAssembler = mock()
         outputValidatorService = mock()
         sessionService = mock()
@@ -49,9 +42,8 @@ class ChatServiceTest {
             }
         chatService =
             ChatService(
-                miniMaxClient, vectorSearchService, webSearchService,
-                valuesFilterService, contextAssembler, outputValidatorService,
-                sessionService, properties,
+                chatClient, vectorSearchService, contextAssembler,
+                outputValidatorService, sessionService, properties,
             )
     }
 
@@ -73,14 +65,13 @@ class ChatServiceTest {
                 ),
             ),
         )
-        whenever(webSearchService.search(any(), any())).thenReturn(emptyList())
-        whenever(contextAssembler.assemble(any(), any())).thenReturn(
+        whenever(contextAssembler.assemble(any())).thenReturn(
             AssembledContext(
                 context = "Document context",
                 citations = listOf(SourceCitation("faq.pdf", "FAQ", "document")),
             ),
         )
-        whenever(miniMaxClient.chat(any(), any(), any(), any())).thenReturn(
+        whenever(chatClient.chat(any(), any(), any(), any(), anyOrNull())).thenReturn(
             ChatResult(content = "Limit pinjaman maksimal adalah Rp 20.000.000."),
         )
         whenever(outputValidatorService.validate(any(), any())).thenReturn(
@@ -104,11 +95,10 @@ class ChatServiceTest {
 
         whenever(sessionService.getConversationHistory(sessionId)).thenReturn(emptyList())
         whenever(vectorSearchService.search(any())).thenReturn(emptyList())
-        whenever(webSearchService.search(any(), any())).thenReturn(emptyList())
-        whenever(contextAssembler.assemble(any(), any())).thenReturn(
+        whenever(contextAssembler.assemble(any())).thenReturn(
             AssembledContext(context = "", citations = emptyList()),
         )
-        whenever(miniMaxClient.chat(any(), any(), any(), any())).thenReturn(
+        whenever(chatClient.chat(any(), any(), any(), any(), anyOrNull())).thenReturn(
             ChatResult(content = "Pinjaman Anda pasti disetujui!"),
         )
         whenever(outputValidatorService.validate(any(), any())).thenReturn(
@@ -124,17 +114,50 @@ class ChatServiceTest {
     }
 
     @Test
-    fun `chat returns fallback when MiniMax call fails`() {
+    fun `chat uses conversation-aware query when history exists`() {
+        val sessionId = UUID.randomUUID()
+        val userMessage = "berapa biayanya?"
+
+        val history =
+            listOf(
+                Message(sessionId = sessionId, role = "user", content = "saya ingin tahu tentang limit pinjaman"),
+                Message(sessionId = sessionId, role = "assistant", content = "Limit pinjaman maksimal Rp 20.000.000"),
+            )
+
+        whenever(sessionService.getConversationHistory(sessionId)).thenReturn(history)
+        whenever(vectorSearchService.search(any())).thenReturn(emptyList())
+        whenever(contextAssembler.assemble(any())).thenReturn(
+            AssembledContext(context = "", citations = emptyList()),
+        )
+        whenever(chatClient.chat(any(), any(), any(), any(), anyOrNull())).thenReturn(
+            ChatResult(content = "Biaya administrasi adalah 1%."),
+        )
+        whenever(outputValidatorService.validate(any(), any())).thenReturn(
+            ValidationResult(passed = true, reason = null),
+        )
+        whenever(sessionService.saveMessage(any(), any(), any())).thenReturn(
+            Message(sessionId = sessionId, role = "user", content = userMessage),
+        )
+
+        val captor = org.mockito.kotlin.argumentCaptor<String>()
+        chatService.chat(sessionId, userMessage)
+
+        org.mockito.kotlin.verify(vectorSearchService).search(captor.capture())
+        assertTrue(captor.firstValue.contains("berapa biayanya?"))
+        assertTrue(captor.firstValue.length > userMessage.length)
+    }
+
+    @Test
+    fun `chat returns fallback when LLM call fails`() {
         val sessionId = UUID.randomUUID()
         val userMessage = "Test message"
 
         whenever(sessionService.getConversationHistory(sessionId)).thenReturn(emptyList())
         whenever(vectorSearchService.search(any())).thenReturn(emptyList())
-        whenever(webSearchService.search(any(), any())).thenReturn(emptyList())
-        whenever(contextAssembler.assemble(any(), any())).thenReturn(
+        whenever(contextAssembler.assemble(any())).thenReturn(
             AssembledContext(context = "", citations = emptyList()),
         )
-        whenever(miniMaxClient.chat(any(), any(), any(), any())).thenThrow(
+        whenever(chatClient.chat(any(), any(), any(), any(), anyOrNull())).thenThrow(
             RuntimeException("API error"),
         )
         whenever(sessionService.saveMessage(any(), any(), any())).thenReturn(
@@ -144,37 +167,5 @@ class ChatServiceTest {
         val result = chatService.chat(sessionId, userMessage)
 
         assertEquals(properties.fallbackMessage, result.response)
-    }
-
-    @Test
-    fun `chat triggers web search when doc results are sparse`() {
-        val sessionId = UUID.randomUUID()
-        val userMessage = "Apa regulasi OJK terbaru?"
-
-        whenever(sessionService.getConversationHistory(sessionId)).thenReturn(emptyList())
-        whenever(vectorSearchService.search(any())).thenReturn(emptyList()) // Sparse docs
-        whenever(webSearchService.search(any(), any())).thenReturn(
-            listOf(WebSearchEntry("OJK Regulasi", "New regulation", "https://ojk.go.id")),
-        )
-        whenever(valuesFilterService.filter(any(), any())).thenReturn(
-            listOf(FilteredWebResult("OJK Regulasi", "New regulation", "https://ojk.go.id", true, null)),
-        )
-        whenever(contextAssembler.assemble(any(), any())).thenReturn(
-            AssembledContext(context = "Web context", citations = listOf(SourceCitation("https://ojk.go.id", "web", "web"))),
-        )
-        whenever(miniMaxClient.chat(any(), any(), any(), any())).thenReturn(
-            ChatResult(content = "Regulasi OJK terbaru adalah..."),
-        )
-        whenever(outputValidatorService.validate(any(), any())).thenReturn(
-            ValidationResult(passed = true, reason = null),
-        )
-        whenever(sessionService.saveMessage(any(), any(), any())).thenReturn(
-            Message(sessionId = sessionId, role = "assistant", content = "response"),
-        )
-
-        val result = chatService.chat(sessionId, userMessage)
-
-        // Should include web source
-        assertTrue(result.citations.any { it.type == "web" })
     }
 }

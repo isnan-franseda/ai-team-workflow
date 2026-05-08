@@ -2,6 +2,7 @@ package com.kreditpintar.chatbot.ingestion
 
 import com.kreditpintar.chatbot.config.ChatbotProperties
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -72,6 +73,27 @@ class TextChunkerTest {
         val chunks = textChunker.chunk(text)
 
         assertTrue(chunks.isEmpty())
+    }
+
+    @Test
+    fun `multiple spaces are collapsed to single space`() {
+        val text = "Batas   pinjaman   adalah   Rp 20.000.000."
+        val chunks = textChunker.chunk(text)
+
+        assertEquals(1, chunks.size)
+        assertFalse(chunks[0].text.contains("  "))
+        assertTrue(chunks[0].text.contains("Batas pinjaman adalah"))
+    }
+
+    @Test
+    fun `excessive newlines are collapsed to double newline`() {
+        val text = "Paragraf pertama.\n\n\n\nParagraf kedua."
+        val chunks = textChunker.chunk(text)
+
+        assertEquals(1, chunks.size)
+        assertFalse(chunks[0].text.contains("\n\n\n"))
+        assertTrue(chunks[0].text.contains("Paragraf pertama"))
+        assertTrue(chunks[0].text.contains("Paragraf kedua"))
     }
 
     @Test

@@ -1,20 +1,16 @@
 package com.kreditpintar.chatbot.service
 
 import com.fasterxml.jackson.annotation.JsonProperty
+import com.kreditpintar.chatbot.config.ChatClient
 import com.kreditpintar.chatbot.config.ChatbotProperties
 import com.kreditpintar.chatbot.config.KpSystemPrompt
-import com.kreditpintar.chatbot.config.MiniMaxClient
 import com.kreditpintar.chatbot.pipeline.ContextAssembler
-import com.kreditpintar.chatbot.pipeline.ValuesFilterService
 import com.kreditpintar.chatbot.pipeline.VectorSearchResult
 import com.kreditpintar.chatbot.pipeline.VectorSearchService
-import com.kreditpintar.chatbot.pipeline.WebSearchEntry
-import com.kreditpintar.chatbot.pipeline.WebSearchService
 import mu.KotlinLogging
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.util.UUID
-import java.util.concurrent.CompletableFuture
 
 private val logger = KotlinLogging.logger {}
 
@@ -33,10 +29,8 @@ data class SourceInfo(
 
 @Service
 class ChatService(
-    private val miniMaxClient: MiniMaxClient,
+    private val chatClient: ChatClient,
     private val vectorSearchService: VectorSearchService,
-    private val webSearchService: WebSearchService,
-    private val valuesFilterService: ValuesFilterService,
     private val contextAssembler: ContextAssembler,
     private val outputValidatorService: OutputValidatorService,
     private val sessionService: SessionService,
@@ -48,50 +42,27 @@ class ChatService(
     ): ChatMessageResponse {
         val startTime = System.currentTimeMillis()
 
-        // Step 1 + 2a: Fetch history and embed query in parallel
-        val historyFuture = CompletableFuture.supplyAsync {
-            sessionService.getConversationHistory(sessionId)
-        }
-        val docResultsFuture = CompletableFuture.supplyAsync {
+        // Step 1: Fetch history first (needed to build conversation-aware search query)
+        val history = sessionService.getConversationHistory(sessionId)
+        val historyPairs = history.map { Pair(it.role.lowercase(), it.content) }
+
+        // Step 2: Build augmented search query and run vector search
+        val searchQuery = buildSearchQuery(userMessage, historyPairs)
+        val docResults: List<VectorSearchResult> =
             try {
-                vectorSearchService.search(userMessage)
+                vectorSearchService.search(searchQuery)
             } catch (e: Exception) {
                 logger.error(e) { "Vector search failed for session=$sessionId" }
-                emptyList<VectorSearchResult>()
-            }
-        }
-
-        val historyPairs = historyFuture.get().map { Pair(it.role.lowercase(), it.content) }
-        val docResults: List<VectorSearchResult> = docResultsFuture.get()
-
-        // Step 3: Web search (fallback or supplement when docs are sparse)
-        val webResults: List<WebSearchEntry> =
-            if (docResults.isEmpty() || docResults.size < 2) {
-                try {
-                    webSearchService.search(userMessage, historyPairs)
-                } catch (e: Exception) {
-                    logger.error(e) { "Web search failed for session=$sessionId" }
-                    emptyList()
-                }
-            } else {
                 emptyList()
             }
 
-        // Step 4: Values filter on web results (NEVER skip this per AGENTS.md)
-        val filteredWebResults =
-            if (webResults.isNotEmpty()) {
-                valuesFilterService.filter(webResults, sessionId.toString())
-            } else {
-                emptyList()
-            }
+        // Step 3: Assemble context from document results
+        val assembledContext = contextAssembler.assemble(docResults)
 
-        // Step 5: Assemble context
-        val assembledContext = contextAssembler.assemble(docResults, filteredWebResults)
-
-        // Step 6: Generate response via MiniMax
+        // Step 4: Generate response via ChatClient
         val chatResult =
             try {
-                miniMaxClient.chat(
+                chatClient.chat(
                     systemPrompt = KpSystemPrompt.SYSTEM_PROMPT,
                     context = assembledContext.context,
                     history = historyPairs,
@@ -108,7 +79,7 @@ class ChatService(
                 )
             }
 
-        // Step 7: Output validation (NEVER skip this per AGENTS.md)
+        // Step 5: Output validation
         val validationResult = outputValidatorService.validate(chatResult.content, sessionId.toString())
 
         val finalResponse =
@@ -119,11 +90,11 @@ class ChatService(
                 properties.fallbackMessage
             }
 
-        // Step 8: Persist messages
+        // Step 6: Persist messages
         sessionService.saveMessage(sessionId, "user", userMessage)
         sessionService.saveMessage(sessionId, "assistant", finalResponse)
 
-        // Step 9: Build response with citations
+        // Step 7: Build response with citations
         val sources =
             assembledContext.citations.map {
                 SourceInfo(source = it.source, type = it.type)
@@ -136,5 +107,14 @@ class ChatService(
             responseTimeMs = System.currentTimeMillis() - startTime,
             timestamp = Instant.now().toString(),
         )
+    }
+
+    private fun buildSearchQuery(
+        userMessage: String,
+        history: List<Pair<String, String>>,
+    ): String {
+        if (history.isEmpty()) return userMessage
+        val recentContext = history.takeLast(2).joinToString(" ") { it.second }.take(200)
+        return "$recentContext $userMessage".take(500)
     }
 }

@@ -35,6 +35,23 @@ interface ChunkRepository : JpaRepository<Chunk, UUID> {
         @Param("limit") limit: Int,
     ): List<Array<Any>>
 
+    @Query(
+        nativeQuery = true,
+        value = """
+            SELECT c.id, c.doc_id, c.chunk_text, c.chunk_index, d.source, d.doc_type
+            FROM chunks c
+            JOIN documents d ON c.doc_id = d.id
+            WHERE c.doc_id = :docId
+              AND c.chunk_index BETWEEN :startIndex AND :endIndex
+            ORDER BY c.chunk_index
+        """,
+    )
+    fun findAdjacentChunks(
+        @Param("docId") docId: UUID,
+        @Param("startIndex") startIndex: Int,
+        @Param("endIndex") endIndex: Int,
+    ): List<Array<Any>>
+
     fun countByDocId(docId: UUID): Int
 
     fun deleteByDocId(docId: UUID)

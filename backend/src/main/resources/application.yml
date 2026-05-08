@@ -23,22 +23,23 @@ spring:
     enabled: true
     locations: classpath:db/migration
 
-minimax:
+llm:
   chat:
-    base-url: ${MINIMAX_CHAT_BASE_URL:http://localhost:8317}
-    key: ${MINIMAX_CHAT_API_KEY:}
-    model: ${MINIMAX_CHAT_MODEL:minimax-m2.7}
-    connect-timeout-seconds: ${MINIMAX_CHAT_CONNECT_TIMEOUT_SECONDS:10}
-    read-timeout-seconds: ${MINIMAX_CHAT_READ_TIMEOUT_SECONDS:60}
-    max-retries: ${MINIMAX_CHAT_MAX_RETRIES:3}
+    provider: ${LLM_CHAT_PROVIDER:openai}
+    api-key: ${LLM_CHAT_API_KEY:}
+    model: ${LLM_CHAT_MODEL:gpt-4o-mini}
+    base-url: ${LLM_CHAT_BASE_URL:https://api.openai.com/v1}
 
-jina:
-  base-url: ${JINA_BASE_URL:https://api.jina.ai}
-  key: ${JINA_API_KEY:}
-  model: ${JINA_EMBEDDING_MODEL:jina-embeddings-v3}
-  connect-timeout-seconds: ${JINA_CONNECT_TIMEOUT_SECONDS:10}
-  read-timeout-seconds: ${JINA_READ_TIMEOUT_SECONDS:60}
-  max-retries: ${JINA_MAX_RETRIES:3}
+  embedding:
+    provider: ${LLM_EMBEDDING_PROVIDER:openai}
+    api-key: ${LLM_EMBEDDING_API_KEY:}
+    model: ${LLM_EMBEDDING_MODEL:text-embedding-3-small}
+    base-url: ${LLM_EMBEDDING_BASE_URL:https://api.openai.com/v1}
+
+  timeout:
+    connect-seconds: ${LLM_CONNECT_TIMEOUT_SECONDS:10}
+    read-seconds: ${LLM_READ_TIMEOUT_SECONDS:60}
+    max-retries: ${LLM_MAX_RETRIES:3}
 
 chatbot:
   rate-limit:
@@ -47,16 +48,16 @@ chatbot:
     max-history-messages: ${MAX_HISTORY_MESSAGES:5}
     doc-weight-percent: 60
     web-weight-percent: 30
-    max-context-chars: ${MAX_CONTEXT_CHARS:2000}
-    doc-max-chars: ${DOC_MAX_CHARS:1200}
+    max-context-chars: ${MAX_CONTEXT_CHARS:4000}
+    doc-max-chars: ${DOC_MAX_CHARS:3000}
     web-max-chars: ${WEB_MAX_CHARS:600}
   search:
     top-k: 5
-    similarity-threshold: ${SIMILARITY_THRESHOLD:0.3}
+    similarity-threshold: ${SIMILARITY_THRESHOLD:0.5}
     max-web-results: 3
   chunking:
-    chunk-size: 400
-    overlap: 50
+    chunk-size: 800
+    overlap: 100
   ingestion:
     batch-size: 10
   fallback-message: "Maaf, saya tidak dapat menjawab pertanyaan Anda saat ini. Silakan hubungi layanan pelanggan Kredit Pintar untuk bantuan lebih lanjut."

@@ -14,15 +14,22 @@ class TextChunker(
     private val properties: ChatbotProperties,
 ) {
     fun chunk(text: String): List<TextChunk> {
+        val normalizedText = text
+            .replace(Regex("[ \t]{2,}"), " ")
+            .replace(Regex("\n{3,}"), "\n\n")
+            .trim()
+
         val chunkSize = properties.chunking.chunkSize
         val overlap = properties.chunking.overlap
 
-        if (text.length <= chunkSize) {
+        if (normalizedText.isEmpty()) return emptyList()
+
+        if (normalizedText.length <= chunkSize) {
             return listOf(
                 TextChunk(
-                    text = text,
+                    text = normalizedText,
                     index = 0,
-                    tokenCount = estimateTokens(text),
+                    tokenCount = estimateTokens(normalizedText),
                 ),
             )
         }
@@ -31,9 +38,9 @@ class TextChunker(
         var index = 0
         var position = 0
 
-        while (position < text.length) {
-            val end = findChunkEnd(text, position, chunkSize)
-            val chunkText = text.substring(position, end).trim()
+        while (position < normalizedText.length) {
+            val end = findChunkEnd(normalizedText, position, chunkSize)
+            val chunkText = normalizedText.substring(position, end).trim()
 
             if (chunkText.isNotEmpty()) {
                 chunks.add(
@@ -47,8 +54,8 @@ class TextChunker(
             }
 
             position =
-                if (end >= text.length) {
-                    text.length
+                if (end >= normalizedText.length) {
+                    normalizedText.length
                 } else {
                     end - overlap
                 }

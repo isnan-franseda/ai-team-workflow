@@ -1,7 +1,7 @@
 package com.kreditpintar.chatbot.ingestion
 
 import com.kreditpintar.chatbot.config.ChatbotProperties
-import com.kreditpintar.chatbot.config.JinaClient
+import com.kreditpintar.chatbot.config.EmbeddingClient
 import com.kreditpintar.chatbot.domain.Chunk
 import com.kreditpintar.chatbot.domain.ChunkRepository
 import com.kreditpintar.chatbot.domain.Document
@@ -24,7 +24,7 @@ data class IngestionResult(
 
 @Service
 class EmbeddingService(
-    private val jinaClient: JinaClient,
+    private val embeddingClient: EmbeddingClient,
     private val documentRepository: DocumentRepository,
     private val chunkRepository: ChunkRepository,
     private val properties: ChatbotProperties,
@@ -65,7 +65,7 @@ class EmbeddingService(
             val batch = chunks.subList(batchStart, minOf(batchStart + batchSize, chunks.size))
             val texts = batch.map { it.text }
 
-            val embeddingResults = jinaClient.embed(texts)
+            val embeddingResults = embeddingClient.embed(texts)
             totalTokensUsed += embeddingResults.sumOf { it.tokensUsed }
 
             for (i in batch.indices) {

@@ -1,8 +1,8 @@
 package com.kreditpintar.chatbot.ingestion
 
 import com.kreditpintar.chatbot.config.ChatbotProperties
+import com.kreditpintar.chatbot.config.EmbeddingClient
 import com.kreditpintar.chatbot.config.EmbeddingResult
-import com.kreditpintar.chatbot.config.MiniMaxClient
 import com.kreditpintar.chatbot.domain.ChunkRepository
 import com.kreditpintar.chatbot.domain.Document
 import com.kreditpintar.chatbot.domain.DocumentRepository
@@ -19,7 +19,7 @@ import java.util.Optional
 import java.util.UUID
 
 class EmbeddingServiceTest {
-    private lateinit var miniMaxClient: MiniMaxClient
+    private lateinit var embeddingClient: EmbeddingClient
     private lateinit var documentRepository: DocumentRepository
     private lateinit var chunkRepository: ChunkRepository
     private lateinit var properties: ChatbotProperties
@@ -27,14 +27,14 @@ class EmbeddingServiceTest {
 
     @BeforeEach
     fun setUp() {
-        miniMaxClient = mock()
+        embeddingClient = mock()
         documentRepository = mock()
         chunkRepository = mock()
         properties =
             ChatbotProperties().apply {
                 ingestion.batchSize = 10
             }
-        embeddingService = EmbeddingService(miniMaxClient, documentRepository, chunkRepository, properties)
+        embeddingService = EmbeddingService(embeddingClient, documentRepository, chunkRepository, properties)
     }
 
     @Test
@@ -63,8 +63,11 @@ class EmbeddingServiceTest {
         whenever(chunkRepository.save(any())).thenAnswer { it.arguments[0] }
 
         val embedding = List(1536) { 0.1f }
-        whenever(miniMaxClient.embed(any())).thenReturn(
-            listOf(EmbeddingResult(embedding = embedding, tokensUsed = 100)),
+        whenever(embeddingClient.embed(any())).thenReturn(
+            listOf(
+                EmbeddingResult(embedding = embedding, tokensUsed = 100),
+                EmbeddingResult(embedding = embedding, tokensUsed = 0),
+            ),
         )
 
         val chunks =
@@ -77,7 +80,7 @@ class EmbeddingServiceTest {
 
         assertFalse(result.skipped)
         assertEquals(2, result.chunksCreated)
-        verify(miniMaxClient).embed(any())
+        verify(embeddingClient).embed(any())
     }
 
     @Test
@@ -87,7 +90,7 @@ class EmbeddingServiceTest {
         val hash2 = EmbeddingService.computeFileHash(bytes)
 
         assertEquals(hash1, hash2)
-        assertEquals(64, hash1.length) // SHA-256 hex = 64 chars
+        assertEquals(64, hash1.length)
     }
 
     @Test

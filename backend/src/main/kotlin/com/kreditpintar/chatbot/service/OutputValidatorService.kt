@@ -1,7 +1,7 @@
 package com.kreditpintar.chatbot.service
 
+import com.kreditpintar.chatbot.config.ChatClient
 import com.kreditpintar.chatbot.config.ChatbotProperties
-import com.kreditpintar.chatbot.config.MiniMaxClient
 import com.kreditpintar.chatbot.config.OutputValidatorPrompt
 import mu.KotlinLogging
 import org.springframework.stereotype.Service
@@ -15,7 +15,7 @@ data class ValidationResult(
 
 @Service
 class OutputValidatorService(
-    private val miniMaxClient: MiniMaxClient,
+    private val chatClient: ChatClient,
     private val properties: ChatbotProperties,
 ) {
     fun validate(
@@ -26,7 +26,7 @@ class OutputValidatorService(
 
         val validationResult =
             try {
-                miniMaxClient.validateOutput(response, prompt)
+                chatClient.validateOutput(response, prompt)
             } catch (e: Exception) {
                 logger.error(e) { "Output validator call failed for session=$sessionId" }
                 return ValidationResult(

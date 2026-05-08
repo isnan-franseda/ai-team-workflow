@@ -16,7 +16,6 @@ class ContextAssemblerTest {
         properties =
             ChatbotProperties().apply {
                 context.docMaxChars = 1800
-                context.webMaxChars = 900
             }
         contextAssembler = ContextAssembler(properties)
     }
@@ -35,7 +34,7 @@ class ContextAssemblerTest {
                 ),
             )
 
-        val result = contextAssembler.assemble(docResults, emptyList())
+        val result = contextAssembler.assemble(docResults)
 
         assertTrue(result.context.contains("DOKUMEN KREDIT PINTAR"))
         assertTrue(result.context.contains("faq.pdf"))
@@ -45,47 +44,8 @@ class ContextAssemblerTest {
     }
 
     @Test
-    fun `assemble includes passed web results with citations`() {
-        val webResults =
-            listOf(
-                FilteredWebResult(
-                    title = "OJK Regulasi",
-                    content = "Regulasi terbaru dari OJK.",
-                    url = "https://ojk.go.id",
-                    passed = true,
-                    filterReason = null,
-                ),
-            )
-
-        val result = contextAssembler.assemble(emptyList(), webResults)
-
-        assertTrue(result.context.contains("INFORMASI WEB"))
-        assertTrue(result.context.contains("OJK Regulasi"))
-        assertEquals(1, result.citations.size)
-        assertEquals("web", result.citations[0].type)
-    }
-
-    @Test
-    fun `assemble excludes failed web results`() {
-        val webResults =
-            listOf(
-                FilteredWebResult(
-                    title = "Bad content",
-                    content = "Bad content",
-                    url = "https://bad.com",
-                    passed = false,
-                    filterReason = "Urgency tactics",
-                ),
-            )
-
-        val result = contextAssembler.assemble(emptyList(), webResults)
-
-        assertTrue(result.citations.isEmpty())
-    }
-
-    @Test
     fun `assemble handles empty results`() {
-        val result = contextAssembler.assemble(emptyList(), emptyList())
+        val result = contextAssembler.assemble(emptyList())
 
         assertTrue(result.context.contains("DOKUMEN KREDIT PINTAR"))
         assertTrue(result.citations.isEmpty())
@@ -96,7 +56,6 @@ class ContextAssemblerTest {
         val props =
             ChatbotProperties().apply {
                 context.docMaxChars = 50
-                context.webMaxChars = 50
             }
         val assembler = ContextAssembler(props)
 
@@ -112,9 +71,8 @@ class ContextAssemblerTest {
                 ),
             )
 
-        val result = assembler.assemble(docResults, emptyList())
+        val result = assembler.assemble(docResults)
 
-        // Context should be limited by docMaxChars
-        assertTrue(result.context.length < 300) // header + limited content
+        assertTrue(result.context.length < 300)
     }
 }

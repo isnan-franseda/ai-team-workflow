@@ -1,9 +1,11 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     id("org.springframework.boot") version "3.3.5"
     id("io.spring.dependency-management") version "1.1.6"
-    id("org.jetbrains.kotlin.jvm") version "1.9.25"
-    id("org.jetbrains.kotlin.plugin.spring") version "1.9.25"
-    id("org.jetbrains.kotlin.plugin.jpa") version "1.9.25"
+    id("org.jetbrains.kotlin.jvm") version "2.1.0"
+    id("org.jetbrains.kotlin.plugin.spring") version "2.1.0"
+    id("org.jetbrains.kotlin.plugin.jpa") version "2.1.0"
     id("org.jlleitschuh.gradle.ktlint") version "12.1.1"
 }
 
@@ -42,6 +44,12 @@ dependencies {
     // OkHttp3
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
+    // OpenAI SDK
+    implementation("com.openai:openai-java:4.35.0")
+
+    // Anthropic SDK
+    implementation("com.anthropic:anthropic-java:2.30.0")
+
     // Bucket4j
     implementation("com.bucket4j:bucket4j-core:8.10.1")
 
@@ -65,9 +73,9 @@ kotlin {
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    kotlinOptions {
+    compilerOptions {
         freeCompilerArgs = listOf("-Xjsr305=strict")
-        jvmTarget = "21"
+        jvmTarget = JvmTarget.JVM_21
     }
 }
 
